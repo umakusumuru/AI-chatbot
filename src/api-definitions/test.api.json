@@ -1,0 +1,38 @@
+{
+  "featureName": "test",
+  "baseRoute": "test",
+  "moduleClassName": "TestModule",
+  "controllerClassName": "TestController",
+  "serviceClassName": "TestService",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAlltestdata",
+      "summary": "Fetch all test data",
+      "responseType": "{ id: string; name: string; email: string }[]"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createTestdata",
+      "summary": "Create a new test data",
+      "requestDto": {
+        "name": "CreateTestdataDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": true },
+          { "name": "email", "type": "string", "required": true },
+          { "name": "age", "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getTestdataById",
+      "summary": "Get test data by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    }
+  ]
+}
