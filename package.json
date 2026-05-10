@@ -4,16 +4,19 @@
   "description": "AI chatbot backend API",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
+    "start": "node dist/src/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
-    "generate:api": "ts-node scripts/generate-api.ts"
+    "generate:api": "ts-node scripts/generate-api.ts",
+    "generate:api:geminii": "ts-node scripts/geminii-generate.ts",
+    "generate:api:run": "ts-node scripts/generate-build-test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.4",
     "@nestjs/core": "^10.3.4",
     "@nestjs/platform-express": "^10.3.4",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "openai": "^6.37.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.4",

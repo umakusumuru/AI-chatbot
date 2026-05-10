@@ -1,0 +1,58 @@
+{
+  "featureName": "example",
+  "baseRoute": "example",
+  "moduleClassName": "ExampleModule",
+  "controllerClassName": "ExampleController",
+  "serviceClassName": "ExampleService",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAll",
+      "summary": "Get all items",
+      "responseType": "{ id: string; name: string }[]"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "create",
+      "summary": "Create a new item",
+      "requestDto": {
+        "name": "CreateExampleDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": true },
+          { "name": "description", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getById",
+      "summary": "Get item by ID",
+      "responseType": "{ id: string; name: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "update",
+      "summary": "Update an item",
+      "requestDto": {
+        "name": "UpdateExampleDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": false },
+          { "name": "description", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "delete",
+      "summary": "Delete an item",
+      "responseType": "{ message: string }"
+    }
+  ]
+}

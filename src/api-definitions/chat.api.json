@@ -1,0 +1,30 @@
+{
+  "featureName": "chat",
+  "baseRoute": "chat",
+  "moduleClassName": "ChatModule",
+  "controllerClassName": "ChatController",
+  "serviceClassName": "ChatService",
+  "routes": [
+    {
+      "method": "get",
+      "path": "health",
+      "actionName": "getHealth",
+      "summary": "Returns API health status",
+      "responseType": "{ status: string; message: string }"
+    },
+    {
+      "method": "post",
+      "path": "message",
+      "actionName": "sendMessage",
+      "summary": "Sends a chat message and returns a response",
+      "requestDto": {
+        "name": "SendMessageDto",
+        "properties": [
+          { "name": "message", "type": "string", "required": true },
+          { "name": "sessionId", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "{ reply: string }"
+    }
+  ]
+}
