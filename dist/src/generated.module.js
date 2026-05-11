@@ -9,13 +9,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GeneratedModule = void 0;
 const common_1 = require("@nestjs/common");
 const chat_module_1 = require("./chat/chat.module");
+const emp_module_1 = require("./emp/emp.module");
+const test_module_1 = require("./test/test.module");
 const user_module_1 = require("./user/user.module");
 let GeneratedModule = class GeneratedModule {
 };
 exports.GeneratedModule = GeneratedModule;
 exports.GeneratedModule = GeneratedModule = __decorate([
     (0, common_1.Module)({
-        imports: [chat_module_1.ChatModule, user_module_1.UserModule],
+        imports: [chat_module_1.ChatModule, emp_module_1.EmpModule, test_module_1.TestModule, user_module_1.UserModule],
         controllers: [],
         providers: [],
     })

@@ -10,21 +10,25 @@ exports.EmpService = void 0;
 const common_1 = require("@nestjs/common");
 const rxjs_1 = require("rxjs");
 let EmpService = class EmpService {
-    getAllEmpdetails() {
+    getEmpdetails() {
         return (0, rxjs_1.of)([
             {
                 id: '1',
                 name: 'Sample Item 1',
-                createdAt: new Date()
+                email: 'item1@example.com'
             },
             {
                 id: '2',
                 name: 'Sample Item 2',
-                createdAt: new Date()
+                email: 'item2@example.com'
             }
         ]);
     }
     createEmp(body) {
+        const missingFields = ['name', 'email'].filter((key) => !body?.[key]);
+        if (missingFields.length) {
+            return (0, rxjs_1.throwError)(() => new common_1.BadRequestException(`Missing required field(s): ${missingFields.join(', ')}`));
+        }
         return (0, rxjs_1.of)({
             ...body,
             id: Math.random().toString(36).substr(2, 9),
@@ -32,12 +36,14 @@ let EmpService = class EmpService {
             status: 'success'
         });
     }
-    getEmpById() {
+    getEmpById(id) {
+        if (id === '0') {
+            return (0, rxjs_1.throwError)(() => new common_1.NotFoundException('Resource not found'));
+        }
         return (0, rxjs_1.of)({
-            id: '1',
+            id: id,
             name: 'Sample GetEmpById',
-            status: 'active',
-            createdAt: new Date()
+            email: 'sample@example.com'
         });
     }
 };

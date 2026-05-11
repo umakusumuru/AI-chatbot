@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TestController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const rxjs_1 = require("rxjs");
 const test_service_1 = require("./test.service");
 const CreateTestdataDto_dto_1 = require("./dto/CreateTestdataDto.dto");
@@ -27,19 +28,26 @@ let TestController = class TestController {
     createTestdata(body) {
         return this.service.createTestdata(body);
     }
-    getTestdataById() {
-        return this.service.getTestdataById();
+    getTestdataById(id) {
+        return this.service.getTestdataById(id);
     }
 };
 exports.TestController = TestController;
 __decorate([
     (0, common_1.Get)(''),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch all test data' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", rxjs_1.Observable)
 ], TestController.prototype, "getAlltestdata", null);
 __decorate([
     (0, common_1.Post)('create'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new test data' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiBody)({ type: CreateTestdataDto_dto_1.CreateTestdataDto }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [CreateTestdataDto_dto_1.CreateTestdataDto]),
@@ -47,11 +55,17 @@ __decorate([
 ], TestController.prototype, "createTestdata", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get test data by ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'Resource not found.' }),
+    __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", rxjs_1.Observable)
 ], TestController.prototype, "getTestdataById", null);
 exports.TestController = TestController = __decorate([
+    (0, swagger_1.ApiTags)('test'),
     (0, common_1.Controller)('test'),
     __metadata("design:paramtypes", [test_service_1.TestService])
 ], TestController);
