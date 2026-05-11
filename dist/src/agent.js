@@ -42,13 +42,31 @@ exports.sampleApiDescription = {
 function capitalize(value) {
     return value.charAt(0).toUpperCase() + value.slice(1);
 }
+function mapSwaggerType(type) {
+    if (type.includes("string"))
+        return "String";
+    if (type.includes("number"))
+        return "Number";
+    if (type.includes("boolean"))
+        return "Boolean";
+    if (type.includes("[]"))
+        return "Array";
+    return "Object";
+}
 function buildDtoSource(dtoName, properties) {
     const lines = properties.map((prop) => {
         const optional = prop.required ? "!" : "?";
-        return `  ${prop.name}${optional}: ${prop.type};`;
+        const swaggerType = mapSwaggerType(prop.type);
+        const decorator = prop.required ?
+            `  @ApiProperty({ required: true, type: ${swaggerType} })`
+            : `  @ApiPropertyOptional({ required: false, type: ${swaggerType} })`;
+        return `${decorator}
+  ${prop.name}${optional}: ${prop.type};`;
     });
-    return `export class ${dtoName} {
-${lines.join("\n")}
+    return `import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class ${dtoName} {
+${lines.join("\n\n")}
 }`;
 }
 function createRouteMethod(route) {
@@ -60,19 +78,37 @@ function createRouteMethod(route) {
         patch: "Patch",
     };
     const httpDecorator = `@${methodMap[route.method]}('${route.path}')`;
+    const hasPathParam = /:(\w+)/.test(route.path);
+    const paramName = route.path.match(/:(\w+)/)?.[1] ?? "id";
+    const pathParam = hasPathParam ? `@Param('${paramName}') ${paramName}: string` : "";
     const bodyParam = route.requestDto ? `@Body() body: ${route.requestDto.name}` : "";
-    const params = [bodyParam].filter(Boolean).join(", ");
+    const params = [pathParam, bodyParam].filter(Boolean).join(", ");
+    const serviceArgs = [
+        hasPathParam ? paramName : "",
+        route.requestDto ? "body" : "",
+    ]
+        .filter(Boolean)
+        .join(", ");
     const returnType = route.responseType ?? "any";
     const descriptionComment = route.summary ? `  // ${route.summary}\n` : "";
+    const operationSummary = route.summary ?? route.actionName;
+    const requestBodyDecorator = route.requestDto ? `  @ApiBody({ type: ${route.requestDto.name} })\n` : "";
+    const notFoundResponse = hasPathParam ?
+        "  @ApiNotFoundResponse({ description: 'Resource not found.' })\n"
+        : "";
     return `${descriptionComment}  ${httpDecorator}
-  ${route.actionName}(${params}): Observable<${returnType}> {
-    return this.service.${route.actionName}(${route.requestDto ? "body" : ""});
+  @ApiOperation({ summary: '${operationSummary}' })
+  @ApiResponse({ status: 200, description: 'Successful response.' })
+  @ApiBadRequestResponse({ description: 'Invalid request.' })
+${notFoundResponse}${requestBodyDecorator}  ${route.actionName}(${params}): Observable<${returnType}> {
+    return this.service.${route.actionName}(${serviceArgs});
   }
 `;
 }
 function buildControllerSource(description) {
     const imports = [
-        `import { Controller, Body, Get, Post, Put, Delete, Patch } from '@nestjs/common';`,
+        `import { Controller, Body, Param, Get, Post, Put, Delete, Patch } from '@nestjs/common';`,
+        `import { ApiBody, ApiBadRequestResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';`,
         `import { Observable } from 'rxjs';`,
         `import { ${description.serviceClassName} } from './${description.baseRoute}.service';`,
     ];
@@ -82,6 +118,7 @@ function buildControllerSource(description) {
     const methods = description.routes.map(createRouteMethod).join("\n");
     return `${[...imports, ...dtoImports].join("\n")}
 
+@ApiTags('${description.baseRoute}')
 @Controller('${description.baseRoute}')
 export class ${description.controllerClassName} {
   constructor(private readonly service: ${description.serviceClassName}) {}
@@ -93,41 +130,72 @@ ${methods}
 function buildServiceSource(description) {
     const methods = description.routes
         .map((route) => {
-        const params = route.requestDto ? `body: ${route.requestDto.name}` : "";
+        const hasPathParam = /:(\w+)/.test(route.path);
+        const paramName = route.path.match(/:(\w+)/)?.[1] ?? "id";
+        const params = [
+            hasPathParam ? `${paramName}: string` : "",
+            route.requestDto ? `body: ${route.requestDto.name}` : "",
+        ]
+            .filter(Boolean)
+            .join(", ");
         const returnType = route.responseType ?? "any";
+        const requiredFields = route.requestDto ?
+            route.requestDto.properties
+                .filter((prop) => prop.required)
+                .map((prop) => prop.name)
+            : [];
+        let validationBlock = "";
+        if (requiredFields.length) {
+            validationBlock = `    const missingFields = [${requiredFields
+                .map((field) => `'${field}'`)
+                .join(", ")}].filter((key) => !(body as any)?.[key]);
+    if (missingFields.length) {
+      return throwError(() => new BadRequestException(\`Missing required field(s): \${missingFields.join(', ')}\`));
+    }
+
+`;
+        }
+        let pathValidationBlock = "";
+        if (hasPathParam) {
+            pathValidationBlock = `    if (${paramName} === '0') {
+      return throwError(() => new NotFoundException('Resource not found'));
+    }
+
+`;
+        }
         let sampleResponse = "{}";
         if (route.requestDto) {
             sampleResponse = `{
-    ...body,
-    id: Math.random().toString(36).substr(2, 9),
-    createdAt: new Date(),
-    status: 'success'
-  }`;
+      ...body,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date(),
+      status: 'success'
+    }`;
         }
         else if (route.method === "get" && returnType.includes("[]")) {
             sampleResponse = `[
-    {
-      id: '1',
-      name: 'Sample Item 1',
-      createdAt: new Date()
-    },
-    {
-      id: '2',
-      name: 'Sample Item 2',
-      createdAt: new Date()
-    }
-  ]`;
+      {
+        id: '1',
+        name: 'Sample Item 1',
+        email: 'item1@example.com'
+      },
+      {
+        id: '2',
+        name: 'Sample Item 2',
+        email: 'item2@example.com'
+      }
+    ]`;
         }
         else {
+            const idValue = hasPathParam ? paramName : "'1'";
             sampleResponse = `{
-    id: '1',
-    name: 'Sample ${capitalize(route.actionName)}',
-    status: 'active',
-    createdAt: new Date()
-  }`;
+      id: ${hasPathParam ? paramName : "'1'"},
+      name: 'Sample ${capitalize(route.actionName)}',
+      email: 'sample@example.com'
+    }`;
         }
         return `  ${route.actionName}(${params}): Observable<${returnType}> {
-    // Test data - Replace with actual business logic
+${validationBlock}${pathValidationBlock}    // Test data - Replace with actual business logic
     return of(${sampleResponse} as unknown as ${returnType});
   }
 `;
@@ -137,8 +205,8 @@ function buildServiceSource(description) {
         .filter((route) => route.requestDto)
         .map((route) => `import { ${route.requestDto.name} } from './dto/${route.requestDto.name}.dto';`);
     const allImports = [
-        'import { Injectable } from "@nestjs/common";',
-        'import { Observable, of } from "rxjs";',
+        'import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";',
+        'import { Observable, of, throwError } from "rxjs";',
         ...dtoImports,
     ];
     return `${allImports.join("\n")}

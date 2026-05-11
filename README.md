@@ -6,6 +6,7 @@ A configuration-driven NestJS backend scaffold that generates API modules, contr
 
 - Generate APIs automatically from `src/api-definitions/*.api.json`
 - Auto-create NestJS feature modules, controllers, services, and DTOs
+- **Swagger/OpenAPI documentation** with error scenarios automatically generated
 - Run a full workflow that generates, builds, starts, and tests the application
 - Uses sample test data in generated services for quick verification
 

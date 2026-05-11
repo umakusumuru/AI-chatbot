@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const rxjs_1 = require("rxjs");
 const chat_service_1 = require("./chat.service");
 const SendMessageDto_dto_1 = require("./dto/SendMessageDto.dto");
@@ -31,18 +32,26 @@ let ChatController = class ChatController {
 exports.ChatController = ChatController;
 __decorate([
     (0, common_1.Get)('health'),
+    (0, swagger_1.ApiOperation)({ summary: 'Returns API health status' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", rxjs_1.Observable)
 ], ChatController.prototype, "getHealth", null);
 __decorate([
     (0, common_1.Post)('message'),
+    (0, swagger_1.ApiOperation)({ summary: 'Sends a chat message and returns a response' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiBody)({ type: SendMessageDto_dto_1.SendMessageDto }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [SendMessageDto_dto_1.SendMessageDto]),
     __metadata("design:returntype", rxjs_1.Observable)
 ], ChatController.prototype, "sendMessage", null);
 exports.ChatController = ChatController = __decorate([
+    (0, swagger_1.ApiTags)('chat'),
     (0, common_1.Controller)('chat'),
     __metadata("design:paramtypes", [chat_service_1.ChatService])
 ], ChatController);

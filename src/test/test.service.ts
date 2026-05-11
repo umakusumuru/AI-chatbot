@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Observable, of, throwError } from "rxjs";
-import { CreateUserDto } from './dto/CreateUserDto.dto';
+import { CreateTestdataDto } from './dto/CreateTestdataDto.dto';
 
 @Injectable()
-export class UserService {
-  getAllUsers(): Observable<{ id: string; name: string; email: string }[]> {
+export class TestService {
+  getAlltestdata(): Observable<{ id: string; name: string; email: string }[]> {
     // Test data - Replace with actual business logic
     return of([
       {
@@ -20,7 +20,7 @@ export class UserService {
     ] as unknown as { id: string; name: string; email: string }[]);
   }
 
-  createUser(body: CreateUserDto): Observable<{ id: string; name: string; email: string }> {
+  createTestdata(body: CreateTestdataDto): Observable<{ id: string; name: string; email: string }> {
     const missingFields = ['name', 'email'].filter((key) => !(body as any)?.[key]);
     if (missingFields.length) {
       return throwError(() => new BadRequestException(`Missing required field(s): ${missingFields.join(', ')}`));
@@ -35,7 +35,7 @@ export class UserService {
     } as unknown as { id: string; name: string; email: string });
   }
 
-  getUserById(id: string): Observable<{ id: string; name: string; email: string }> {
+  getTestdataById(id: string): Observable<{ id: string; name: string; email: string }> {
     if (id === '0') {
       return throwError(() => new NotFoundException('Resource not found'));
     }
@@ -43,7 +43,7 @@ export class UserService {
     // Test data - Replace with actual business logic
     return of({
       id: id,
-      name: 'Sample GetUserById',
+      name: 'Sample GetTestdataById',
       email: 'sample@example.com'
     } as unknown as { id: string; name: string; email: string });
   }

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmpController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const rxjs_1 = require("rxjs");
 const emp_service_1 = require("./emp.service");
 const CreateEmpDto_dto_1 = require("./dto/CreateEmpDto.dto");
@@ -21,25 +22,32 @@ let EmpController = class EmpController {
     constructor(service) {
         this.service = service;
     }
-    getAllEmpdetails() {
-        return this.service.getAllEmpdetails();
+    getEmpdetails() {
+        return this.service.getEmpdetails();
     }
     createEmp(body) {
         return this.service.createEmp(body);
     }
-    getEmpById() {
-        return this.service.getEmpById();
+    getEmpById(id) {
+        return this.service.getEmpById(id);
     }
 };
 exports.EmpController = EmpController;
 __decorate([
     (0, common_1.Get)(''),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch all employees' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", rxjs_1.Observable)
-], EmpController.prototype, "getAllEmpdetails", null);
+], EmpController.prototype, "getEmpdetails", null);
 __decorate([
     (0, common_1.Post)('create'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new employee' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiBody)({ type: CreateEmpDto_dto_1.CreateEmpDto }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [CreateEmpDto_dto_1.CreateEmpDto]),
@@ -47,11 +55,17 @@ __decorate([
 ], EmpController.prototype, "createEmp", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get employee by ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'Resource not found.' }),
+    __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", rxjs_1.Observable)
 ], EmpController.prototype, "getEmpById", null);
 exports.EmpController = EmpController = __decorate([
+    (0, swagger_1.ApiTags)('emp'),
     (0, common_1.Controller)('emp'),
     __metadata("design:paramtypes", [emp_service_1.EmpService])
 ], EmpController);

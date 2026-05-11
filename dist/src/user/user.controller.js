@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserController = void 0;
 const common_1 = require("@nestjs/common");
+const swagger_1 = require("@nestjs/swagger");
 const rxjs_1 = require("rxjs");
 const user_service_1 = require("./user.service");
 const CreateUserDto_dto_1 = require("./dto/CreateUserDto.dto");
@@ -27,19 +28,26 @@ let UserController = class UserController {
     createUser(body) {
         return this.service.createUser(body);
     }
-    getUserById() {
-        return this.service.getUserById();
+    getUserById(id) {
+        return this.service.getUserById(id);
     }
 };
 exports.UserController = UserController;
 __decorate([
     (0, common_1.Get)(''),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch all users' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", rxjs_1.Observable)
 ], UserController.prototype, "getAllUsers", null);
 __decorate([
     (0, common_1.Post)('create'),
+    (0, swagger_1.ApiOperation)({ summary: 'Create a new user' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiBody)({ type: CreateUserDto_dto_1.CreateUserDto }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [CreateUserDto_dto_1.CreateUserDto]),
@@ -47,11 +55,17 @@ __decorate([
 ], UserController.prototype, "createUser", null);
 __decorate([
     (0, common_1.Get)(':id'),
+    (0, swagger_1.ApiOperation)({ summary: 'Get user by ID' }),
+    (0, swagger_1.ApiResponse)({ status: 200, description: 'Successful response.' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid request.' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'Resource not found.' }),
+    __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", rxjs_1.Observable)
 ], UserController.prototype, "getUserById", null);
 exports.UserController = UserController = __decorate([
+    (0, swagger_1.ApiTags)('user'),
     (0, common_1.Controller)('user'),
     __metadata("design:paramtypes", [user_service_1.UserService])
 ], UserController);

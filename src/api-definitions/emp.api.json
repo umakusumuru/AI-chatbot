@@ -1,0 +1,38 @@
+{
+  "featureName": "emp",
+  "baseRoute": "emp",
+  "moduleClassName": "EmpModule",
+  "controllerClassName": "EmpController",
+  "serviceClassName": "EmpService",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getEmpdetails",
+      "summary": "Fetch all employees",
+      "responseType": "{ id: string; name: string; email: string }[]"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createEmp",
+      "summary": "Create a new employee",
+      "requestDto": {
+        "name": "CreateEmpDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": true },
+          { "name": "email", "type": "string", "required": true },
+          { "name": "age", "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getEmpById",
+      "summary": "Get employee by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    }
+  ]
+}

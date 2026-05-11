@@ -14,11 +14,14 @@ let ChatService = class ChatService {
         return (0, rxjs_1.of)({
             id: '1',
             name: 'Sample GetHealth',
-            status: 'active',
-            createdAt: new Date()
+            email: 'sample@example.com'
         });
     }
     sendMessage(body) {
+        const missingFields = ['message'].filter((key) => !body?.[key]);
+        if (missingFields.length) {
+            return (0, rxjs_1.throwError)(() => new common_1.BadRequestException(`Missing required field(s): ${missingFields.join(', ')}`));
+        }
         return (0, rxjs_1.of)({
             ...body,
             id: Math.random().toString(36).substr(2, 9),
