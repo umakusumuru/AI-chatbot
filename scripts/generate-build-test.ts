@@ -1,26 +1,61 @@
-import * as path from "path";
-import { spawnSync, spawn } from "child_process";
+import * as path from 'path';
+import { spawnSync, spawn } from 'child_process';
 import {
   createAgentApiFiles,
   generateApisFromDirectory,
+  generateApiFromFile,
   writeGeneratedModuleFile,
+  formatGeneratedFiles,
   ApiDescription,
   ApiRoute,
   sampleApiDescription,
-} from "../src/agent";
-import * as http from "http";
-import { URL } from "url";
-import { GeminiiClient } from "../src/geminii";
-import { readdir, readFile } from "fs/promises";
+} from '../src/agent';
+import * as http from 'http';
+import { URL } from 'url';
+import { GeminiiClient } from '../src/geminii';
+import { readdir, readFile } from 'fs/promises';
 
 const TEST_PORT = 4000;
 const SERVER_URL = `http://localhost:${TEST_PORT}/api`;
 const START_TIMEOUT_MS = 15000;
 const TEST_ROUTE_TIMEOUT_MS = 10000;
 
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let outputDir = 'src';
+  let definitionsDir = 'src/api-definitions';
+  let apiFile: string | undefined;
+
+  for (const arg of args) {
+    if (arg.startsWith('--file=')) {
+      apiFile = arg.slice('--file='.length);
+    } else if (arg.startsWith('--api=')) {
+      apiFile = arg.slice('--api='.length);
+    } else if (arg.startsWith('--output=')) {
+      outputDir = arg.slice('--output='.length);
+    } else if (arg.startsWith('--output-dir=')) {
+      outputDir = arg.slice('--output-dir='.length);
+    } else if (arg.startsWith('--definitions=')) {
+      definitionsDir = arg.slice('--definitions='.length);
+    } else if (arg.startsWith('--definitions-dir=')) {
+      definitionsDir = arg.slice('--definitions-dir='.length);
+    } else if (arg.startsWith('--')) {
+      continue;
+    } else if (outputDir === 'src') {
+      outputDir = arg;
+    } else if (definitionsDir === 'src/api-definitions') {
+      definitionsDir = arg;
+    } else {
+      apiFile = arg;
+    }
+  }
+
+  return { outputDir, definitionsDir, apiFile };
+}
+
 function formatRoutePath(baseRoute: string, routePath: string): string {
-  const cleanedPath = routePath.replace(/(^\/)|(\/$)/g, "");
-  const normalized = cleanedPath.replace(/:[^/]+/g, "1");
+  const cleanedPath = routePath.replace(/(^\/)|(\/$)/g, '');
+  const normalized = cleanedPath.replace(/:[^/]+/g, '1');
   return normalized ? `${baseRoute}/${normalized}` : baseRoute;
 }
 
@@ -33,13 +68,13 @@ function sampleBodyForDto(dto: RequestDtoDefinition) {
   const body: Record<string, unknown> = {};
 
   for (const property of dto.properties) {
-    if (property.type.includes("string")) {
+    if (property.type.includes('string')) {
       body[property.name] = `${property.name}-sample`;
-    } else if (property.type.includes("number")) {
+    } else if (property.type.includes('number')) {
       body[property.name] = 1;
-    } else if (property.type.includes("boolean")) {
+    } else if (property.type.includes('boolean')) {
       body[property.name] = true;
-    } else if (property.type.includes("[]")) {
+    } else if (property.type.includes('[]')) {
       body[property.name] = [];
     } else {
       body[property.name] = null;
@@ -62,21 +97,21 @@ function httpRequest(
         port: Number(parsedUrl.port),
         path: parsedUrl.pathname + parsedUrl.search,
         method,
-        headers: body ? { "Content-Type": "application/json" } : undefined,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
       },
       (res) => {
         const chunks: Buffer[] = [];
-        res.on("data", (chunk) => chunks.push(chunk));
-        res.on("end", () => {
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
           resolve({
             statusCode: res.statusCode ?? 0,
-            data: Buffer.concat(chunks).toString("utf8"),
+            data: Buffer.concat(chunks).toString('utf8'),
           });
         });
       }
     );
 
-    request.on("error", reject);
+    request.on('error', reject);
 
     if (body) {
       request.write(JSON.stringify(body));
@@ -89,20 +124,22 @@ function httpRequest(
 async function generateApisFromDirectoryGeminii(
   definitionsDir: string,
   outputDir: string,
-  apiKey: string
+  apiKey: string,
+  apiFile?: string
 ): Promise<ApiDescription[]> {
-  const files = await readdir(definitionsDir);
-  const apiFiles = files.filter((file) => file.endsWith(".api.json"));
-
-  if (apiFiles.length === 0) {
-    return [];
-  }
-
   const client = new GeminiiClient(apiKey);
   const descriptions: ApiDescription[] = [];
 
-  for (const file of apiFiles) {
-    const raw = await readFile(path.join(definitionsDir, file), "utf-8");
+  const apiFiles: string[] = [];
+  if (apiFile) {
+    const normalizedFile = apiFile.endsWith('.api.json')
+      ? apiFile
+      : `${apiFile}.api.json`;
+    const apiFilePath = path.isAbsolute(normalizedFile)
+      ? normalizedFile
+      : path.join(definitionsDir, normalizedFile);
+    apiFiles.push(path.basename(apiFilePath));
+    const raw = await readFile(apiFilePath, 'utf-8');
     const description: ApiDescription = JSON.parse(raw);
     descriptions.push(description);
 
@@ -110,7 +147,31 @@ async function generateApisFromDirectoryGeminii(
     for (const generatedFile of generatedFiles) {
       const filePath = path.join(outputDir, generatedFile.path);
       await ensureDirectory(path.dirname(filePath));
-      await writeFile(filePath, generatedFile.content, "utf8");
+      await writeFile(filePath, generatedFile.content, 'utf8');
+    }
+    console.log(
+      `✓ Generated feature '${description.featureName}' via geminii from ${apiFiles[0]}`
+    );
+    return descriptions;
+  }
+
+  const files = await readdir(definitionsDir);
+  const definitionFiles = files.filter((file) => file.endsWith('.api.json'));
+
+  if (definitionFiles.length === 0) {
+    return [];
+  }
+
+  for (const file of definitionFiles) {
+    const raw = await readFile(path.join(definitionsDir, file), 'utf-8');
+    const description: ApiDescription = JSON.parse(raw);
+    descriptions.push(description);
+
+    const generatedFiles = await client.generateFiles(description);
+    for (const generatedFile of generatedFiles) {
+      const filePath = path.join(outputDir, generatedFile.path);
+      await ensureDirectory(path.dirname(filePath));
+      await writeFile(filePath, generatedFile.content, 'utf8');
     }
     console.log(
       `✓ Generated feature '${description.featureName}' via geminii from ${file}`
@@ -121,7 +182,7 @@ async function generateApisFromDirectoryGeminii(
 }
 
 async function ensureDirectory(dirPath: string) {
-  const { mkdir } = await import("fs/promises");
+  const { mkdir } = await import('fs/promises');
   await mkdir(dirPath, { recursive: true });
 }
 
@@ -130,7 +191,7 @@ async function writeFile(
   content: string,
   encoding: BufferEncoding
 ) {
-  const { writeFile } = await import("fs/promises");
+  const { writeFile } = await import('fs/promises');
   await writeFile(filePath, content, encoding);
 }
 
@@ -138,7 +199,7 @@ async function waitForServer(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const result = await httpRequest("GET", url);
+      const result = await httpRequest('GET', url);
       if (result.statusCode >= 200 && result.statusCode < 500) {
         return;
       }
@@ -158,8 +219,9 @@ async function testGeneratedApis(descriptions: ApiDescription[]) {
       const routePath = formatRoutePath(description.baseRoute, route.path);
       const url = `${SERVER_URL}/${routePath}`;
       const method = route.method.toUpperCase();
-      const body =
-        route.requestDto ? sampleBodyForDto(route.requestDto) : undefined;
+      const body = route.requestDto
+        ? sampleBodyForDto(route.requestDto)
+        : undefined;
 
       try {
         const result = await httpRequest(method, url, body);
@@ -173,40 +235,62 @@ async function testGeneratedApis(descriptions: ApiDescription[]) {
   }
 
   if (failures.length) {
-    throw new Error(`API tests failed:\n${failures.join("\n")}`);
+    throw new Error(`API tests failed:\n${failures.join('\n')}`);
+  }
+}
+
+function runJestTests() {
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const jestArgs = ['run', 'test', '--', '--runInBand'];
+
+  const result = spawnSync(npmCommand, jestArgs, {
+    stdio: 'inherit',
+    shell: true,
+  });
+
+  if (result.status !== 0) {
+    throw new Error('Jest tests failed. See output above.');
   }
 }
 
 async function main() {
-  const outputDirArg = process.argv[2] ?? "src";
+  const { outputDir: outputDirArg, definitionsDir, apiFile } = parseArgs();
   const outputDir = path.resolve(process.cwd(), outputDirArg);
-  const definitionsDir = path.resolve(
-    process.cwd(),
-    outputDirArg,
-    "api-definitions"
-  );
+  const absoluteDefinitions = path.resolve(process.cwd(), definitionsDir);
 
-  console.log("🚀 Generating APIs from definitions...");
+  console.log('🚀 Generating APIs from definitions...');
+  console.log(`Definitions: ${absoluteDefinitions}`);
+  console.log(`Output: ${outputDir}`);
   let descriptions: ApiDescription[];
 
-  if (process.env.USE_GEMINII === "true") {
+  if (process.env.USE_GEMINII === 'true') {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is required when USE_GEMINII=true");
+      throw new Error('OPENAI_API_KEY is required when USE_GEMINII=true');
     }
-    console.log("🤖 Using Gemini/OpenAI for generation...");
+    console.log('🤖 Using Gemini/OpenAI for generation...');
     descriptions = await generateApisFromDirectoryGeminii(
       definitionsDir,
       outputDir,
-      apiKey
+      apiKey,
+      apiFile
     );
+  } else if (apiFile) {
+    console.log('📜 Using script-based generation for a single API...');
+    const normalizedFile = apiFile.endsWith('.api.json')
+      ? apiFile
+      : `${apiFile}.api.json`;
+    const apiFilePath = path.isAbsolute(normalizedFile)
+      ? normalizedFile
+      : path.join(definitionsDir, normalizedFile);
+    descriptions = [await generateApiFromFile(apiFilePath, outputDir)];
   } else {
-    console.log("📜 Using script-based generation...");
+    console.log('📜 Using script-based generation...');
     descriptions = await generateApisFromDirectory(definitionsDir, outputDir);
   }
 
   if (descriptions.length === 0) {
-    console.log("⚠️ No API definitions found. Generating sample API instead.");
+    console.log('⚠️ No API definitions found. Generating sample API instead.');
     await createAgentApiFiles(sampleApiDescription, outputDir);
     descriptions = [sampleApiDescription];
   }
@@ -215,39 +299,53 @@ async function main() {
     `📝 Writing generated module with ${descriptions.length} descriptions...`
   );
   await writeGeneratedModuleFile(descriptions, outputDir);
-  console.log("✅ Generated module written successfully.");
+  console.log('✅ Generated module written successfully.');
+  // Format and lint generated files (best-effort)
+  try {
+    await formatGeneratedFiles(outputDir, descriptions);
+    console.log(
+      '✅ Formatted generated files with Prettier and ESLint (if available).'
+    );
+  } catch (e) {
+    console.warn('⚠️ Formatting step failed or tools not available:', e);
+  }
 
-  console.log("🔧 Building project...");
-  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  console.log('🔧 Building project...');
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
   const buildCommand = `${npmCommand} run build`;
   const buildResult = spawnSync(buildCommand, {
-    stdio: "inherit",
+    stdio: 'inherit',
     shell: true,
   });
 
   if (buildResult.status !== 0) {
-    throw new Error("Build failed. See output above.");
+    throw new Error('Build failed. See output above.');
   }
 
-  console.log("▶️ Starting built application...");
-  const server = spawn("node", ["dist/src/main.js"], {
+  console.log('🧪 Running Jest unit tests...');
+  runJestTests();
+
+  console.log('▶️ Starting built application...');
+  const server = spawn('node', ['dist/src/main.js'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
       PORT: String(TEST_PORT),
+      VENDOR_MOCK: 'true',
     },
-    stdio: ["ignore", "inherit", "inherit"],
+    stdio: ['ignore', 'inherit', 'inherit'],
   });
 
   try {
     await waitForServer(SERVER_URL, START_TIMEOUT_MS);
     console.log(`✅ Server started at ${SERVER_URL}`);
 
-    console.log("🧪 Running test requests against generated APIs...");
-    const apiDescriptions =
-      descriptions.length ? descriptions : [sampleApiDescription];
+    console.log('🧪 Running test requests against generated APIs...');
+    const apiDescriptions = descriptions.length
+      ? descriptions
+      : [sampleApiDescription];
     await testGeneratedApis(apiDescriptions);
-    console.log("✅ All generated API routes returned successful responses.");
+    console.log('✅ All generated API routes returned successful responses.');
   } finally {
     if (!server.killed) {
       server.kill();
@@ -256,11 +354,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("❌ generate-build-test failed:", error);
-  process.exit(1);
-});
-
-main().catch((error) => {
-  console.error("❌ generate-build-test failed:", error);
+  console.error('❌ generate-build-test failed:', error);
   process.exit(1);
 });

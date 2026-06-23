@@ -67,6 +67,34 @@ npm run generate:api
 
 This will scan `src/api-definitions/`, create feature folders, and generate the NestJS files.
 
+Generate a single API definition file instead of all definitions:
+
+```bash
+npm run generate:api -- --file=chat.api.json
+```
+
+Or use the feature name directly:
+
+```bash
+npm run generate:api -- --api=chat
+```
+
+Specify the output path and definitions path when generating from another repo or from a different directory layout:
+
+```bash
+npm run generate:api -- --definitions=./src/api-definitions --output=./generated-api
+```
+
+This will generate files into `./generated-api` and read definitions from `./src/api-definitions`.
+
+For a single API file and a custom output folder:
+
+```bash
+npm run generate:api -- --file=chat.api.json --definitions=./src/api-definitions --output=./generated-api
+```
+
+This will generate only `chat.api.json` and update `./generated-api/generated.module.ts`.
+
 ### Gemini/OpenAI-driven generation
 
 Use Gemini-style generation with OpenAI by setting your API key and running:
@@ -80,10 +108,49 @@ This command reads API definitions from `src/api-definitions/` and uses `openai`
 
 ## Build, Run, and Test
 
-To generate APIs, build the project, start the compiled app, and validate generated endpoints in one command:
+To generate APIs with automatic unit test cases, build the project, validate tests, start the app, and test endpoints in one command:
 
 ```bash
 npm run generate:api:run
+```
+
+This command automatically:
+
+1. Generates API modules, controllers, and services
+2. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
+3. Builds the TypeScript project
+4. **Runs all Jest unit tests** (must pass before continuing)
+5. Starts the built server on `http://localhost:4000/api`
+6. Validates generated API endpoints
+
+When Prettier and ESLint are installed locally, generated files are also formatted and linted automatically during generation.
+
+If any unit tests fail, the command stops and reports errors without starting the server.
+
+### Individual Command Options
+
+Run the full workflow for a single API definition:
+
+```bash
+npm run generate:api:run -- --file=chat.api.json
+```
+
+Or use the feature name directly:
+
+```bash
+npm run generate:api:run -- --api=chat
+```
+
+Specify paths for custom layouts:
+
+```bash
+npm run generate:api:run -- --definitions=./src/api-definitions --output=./generated-api
+```
+
+For a single API definition with custom paths:
+
+```bash
+npm run generate:api:run -- --file=chat.api.json --definitions=./src/api-definitions --output=./src/api
 ```
 
 By default, this uses script-based generation. To use AI-driven generation with OpenAI:
@@ -94,13 +161,32 @@ set USE_GEMINII=true
 npm run generate:api:run
 ```
 
-The command:
+### Just Generate APIs (Without Tests/Build)
 
-1. scans API definition files
-2. generates code for each API (script or AI-based)
-3. compiles TypeScript output
-4. starts the built server on `http://localhost:4000/api`
-5. sends test requests to generated routes
+If you only want to generate API files without building or testing:
+
+```bash
+npm run generate:api
+```
+
+### ESLint / Prettier
+
+This project supports ESLint and Prettier for generated files.
+
+Install the dev dependencies first:
+
+```bash
+npm install --save-dev prettier eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+```
+
+Then run formatting and linting manually:
+
+```bash
+npm run format
+npm run lint:fix
+```
+
+When these tools are installed locally, generation will also attempt to format and lint generated files automatically.
 
 ## Testing Both Generation Methods
 
@@ -124,7 +210,12 @@ This uses OpenAI's GPT model to generate more creative or complex code based on 
 
 ```bash
 # Set your OpenAI API key
-set OPENAI_API_KEY=your_openai_api_key_here
+set OPENAI_API_KEY=<YOUR_OPENAI_API_KEY_HERE>
+
+
+$env:OPENAI_API_KEY="<YOUR_OPENAI_API_KEY_HERE>"
+npm run generate:api:geminii
+
 
 # Generate APIs using AI
 npm run generate:api:geminii
@@ -136,10 +227,10 @@ npm run generate:api:run
 
 ### Comparison
 
-| Method | Pros | Cons |
-|--------|------|------|
-| Script-Based | Fast, consistent, no API key needed | Limited to predefined templates |
-| AI-Driven | Creative, handles complex logic, flexible | Requires API key, may vary results |
+| Method       | Pros                                      | Cons                               |
+| ------------ | ----------------------------------------- | ---------------------------------- |
+| Script-Based | Fast, consistent, no API key needed       | Limited to predefined templates    |
+| AI-Driven    | Creative, handles complex logic, flexible | Requires API key, may vary results |
 
 Both methods produce fully functional NestJS APIs with Observables, automatic module registration, and test endpoints.
 
@@ -156,9 +247,63 @@ npm run build
 npm start
 ```
 
+## Unit Testing
+
+Generated APIs include automatic Jest unit tests for controllers and services. Tests validate:
+
+- Basic operation of all routes
+- Bad request errors for missing required fields
+- Not found errors for routes with path parameters
+
+### Run all tests
+
+```bash
+npm test
+```
+
+### Run tests in watch mode
+
+```bash
+npm run test:watch
+```
+
+### Run tests for a specific API
+
+```bash
+npx jest src/chat/chat.service.spec.ts
+npx jest src/chat/chat.controller.spec.ts
+```
+
+Unit tests are generated automatically in each feature directory:
+
+- `src/{feature}/{feature}.service.spec.ts`
+- `src/{feature}/{feature}.controller.spec.ts`
+
+When you run `npm run generate:api:run`, Jest tests are executed and must pass before the server starts.
+
 ## Notes
 
 - Add new API definitions in `src/api-definitions/`.
 - Run `npm run generate:api` or `npm run generate:api:run` to regenerate APIs.
 - `src/generated.module.ts` is automatically updated with generated feature modules.
 - Generated services return placeholder sample data; replace with real business logic as needed.
+
+## Vendor / Third-Party Proxy Routes
+
+You can call external/vendor APIs directly from generated routes by adding a `vendor` block to a route in your `.api.json` file. Example (see `src/api-definitions/vendor.api.json`):
+
+```json
+"vendor": {
+  "url": "https://api.vendor.com/v1/translate",
+  "method": "post",
+  "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{body.apiKey}}" },
+  "mapRequest": { "text": "{{body.text}}", "lang": "{{body.lang}}" },
+  "mapResponse": { "translated": "{{vendorResponse.translatedText}}" }
+}
+```
+
+Notes:
+
+- The generator will emit code that templates `url`, `headers`, and `mapRequest` using `{{...}}` placeholders.
+- `mapResponse` (optional) lets you reshape the vendor response before returning it from your API.
+- The generated services use the global `fetch` API; on Node versions older than v18, install a fetch polyfill such as `node-fetch`.

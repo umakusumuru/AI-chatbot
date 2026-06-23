@@ -17,6 +17,6 @@
       "@app/*": ["src/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*"],
+  "include": ["src/**/*", "scripts/**/*", "jest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

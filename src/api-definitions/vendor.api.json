@@ -1,0 +1,29 @@
+{
+  "featureName": "vendor",
+  "baseRoute": "vendor",
+  "moduleClassName": "VendorModule",
+  "controllerClassName": "VendorController",
+  "serviceClassName": "VendorService",
+  "routes": [
+    {
+      "method": "post",
+      "path": "translate",
+      "actionName": "translateText",
+      "summary": "Proxy to external vendor API (example)",
+      "requestDto": {
+        "name": "TranslateDto",
+        "properties": [
+          { "name": "text", "type": "string", "required": true },
+          { "name": "lang", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "any",
+      "vendor": {
+        "url": "https://postman-echo.com/post",
+        "method": "post",
+        "headers": { "Content-Type": "application/json" },
+        "mapRequest": { "input": "{{body.text}}", "target": "{{body.lang}}" }
+      }
+    }
+  ]
+}

@@ -1,5 +1,21 @@
-import { Controller, Body, Param, Get, Post, Put, Delete, Patch } from '@nestjs/common';
-import { ApiBody, ApiBadRequestResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Body,
+  Param,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Patch,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { ChatService } from './chat.service';
 import { SendMessageDto } from './dto/SendMessageDto.dto';
@@ -27,5 +43,4 @@ export class ChatController {
   sendMessage(@Body() body: SendMessageDto): Observable<{ reply: string }> {
     return this.service.sendMessage(body);
   }
-
 }

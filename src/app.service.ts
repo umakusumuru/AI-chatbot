@@ -5,7 +5,7 @@ export class AppService {
   getStatus() {
     return {
       status: 'ok',
-      message: 'AI chatbot API scaffold is ready.'
+      message: 'AI chatbot API scaffold is ready.',
     };
   }
 }

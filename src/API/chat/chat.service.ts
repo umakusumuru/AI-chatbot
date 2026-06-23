@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Observable, of, throwError, from } from 'rxjs';
-import { CreateUserDto } from './dto/CreateUserDto.dto';
+import { SendMessageDto } from './dto/SendMessageDto.dto';
 // Helper: simple template resolver for objects/strings containing {{...}} placeholders
 function __resolvePath(path: string, ctx: any) {
   try {
@@ -41,29 +41,18 @@ function __applyTemplate(template: any, ctx: any): any {
 }
 
 @Injectable()
-export class UserService {
-  getAllUsers(): Observable<{ id: string; name: string; email: string }[]> {
+export class ChatService {
+  getHealth(): Observable<{ status: string; message: string }> {
     // Test data - Replace with actual business logic
-    return of([
-      {
-        id: '1',
-        name: 'Sample Item 1',
-        email: 'item1@example.com',
-      },
-      {
-        id: '2',
-        name: 'Sample Item 2',
-        email: 'item2@example.com',
-      },
-    ] as unknown as { id: string; name: string; email: string }[]);
+    return of({
+      id: '1',
+      name: 'Sample GetHealth',
+      email: 'sample@example.com',
+    } as unknown as { status: string; message: string });
   }
 
-  createUser(
-    body: CreateUserDto
-  ): Observable<{ id: string; name: string; email: string }> {
-    const missingFields = ['name', 'email'].filter(
-      (key) => !(body as any)?.[key]
-    );
+  sendMessage(body: SendMessageDto): Observable<{ reply: string }> {
+    const missingFields = ['message'].filter((key) => !(body as any)?.[key]);
     if (missingFields.length) {
       return throwError(
         () =>
@@ -79,21 +68,6 @@ export class UserService {
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date(),
       status: 'success',
-    } as unknown as { id: string; name: string; email: string });
-  }
-
-  getUserById(
-    id: string
-  ): Observable<{ id: string; name: string; email: string }> {
-    if (id === '0') {
-      return throwError(() => new NotFoundException('Resource not found'));
-    }
-
-    // Test data - Replace with actual business logic
-    return of({
-      id: id,
-      name: 'Sample GetUserById',
-      email: 'sample@example.com',
-    } as unknown as { id: string; name: string; email: string });
+    } as unknown as { reply: string });
   }
 }

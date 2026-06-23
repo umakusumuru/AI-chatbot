@@ -9,6 +9,7 @@ This repository features an automatic API generation system that creates NestJS 
 API definitions are stored in `src/api-definitions/` directory as `.api.json` files.
 
 **Directory Structure:**
+
 ```
 src/
 ├── api-definitions/
@@ -66,6 +67,7 @@ npm run generate:api
 ```
 
 This script will:
+
 - Scan `src/api-definitions/` for all `.api.json` files
 - Generate feature modules, controllers, and services for each
 - Create Data Transfer Objects (DTOs) for request bodies
@@ -83,7 +85,7 @@ import { UserModule } from './user/user.module';
 @Module({
   imports: [ChatModule, UserModule],
   controllers: [],
-  providers: []
+  providers: [],
 })
 export class GeneratedModule {}
 ```
@@ -94,7 +96,7 @@ The `AppModule` already imports `GeneratedModule`:
 @Module({
   imports: [GeneratedModule],
   controllers: [AppController],
-  providers: [AppService]
+  providers: [AppService],
 })
 export class AppModule {}
 ```
@@ -103,39 +105,39 @@ export class AppModule {}
 
 ### Top-Level Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `featureName` | string | Human-readable name of the feature |
-| `baseRoute` | string | Base URL route (e.g., `/chat`, `/user`) |
-| `moduleClassName` | string | NestJS module class name |
-| `controllerClassName` | string | NestJS controller class name |
-| `serviceClassName` | string | NestJS service class name |
-| `routes` | ApiRoute[] | Array of route definitions |
+| Property              | Type       | Description                             |
+| --------------------- | ---------- | --------------------------------------- |
+| `featureName`         | string     | Human-readable name of the feature      |
+| `baseRoute`           | string     | Base URL route (e.g., `/chat`, `/user`) |
+| `moduleClassName`     | string     | NestJS module class name                |
+| `controllerClassName` | string     | NestJS controller class name            |
+| `serviceClassName`    | string     | NestJS service class name               |
+| `routes`              | ApiRoute[] | Array of route definitions              |
 
 ### Route Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `method` | string | HTTP method: `get`, `post`, `put`, `delete`, `patch` |
-| `path` | string | Route path (e.g., `health`, `:id`) |
-| `actionName` | string | Method name in controller/service |
-| `summary` | string | Optional description of the endpoint |
-| `requestDto` | object | Optional request body DTO definition |
-| `responseType` | string | TypeScript type for response |
+| Property       | Type   | Description                                          |
+| -------------- | ------ | ---------------------------------------------------- |
+| `method`       | string | HTTP method: `get`, `post`, `put`, `delete`, `patch` |
+| `path`         | string | Route path (e.g., `health`, `:id`)                   |
+| `actionName`   | string | Method name in controller/service                    |
+| `summary`      | string | Optional description of the endpoint                 |
+| `requestDto`   | object | Optional request body DTO definition                 |
+| `responseType` | string | TypeScript type for response                         |
 
 ### DTO Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | string | DTO class name |
+| Property     | Type       | Description                   |
+| ------------ | ---------- | ----------------------------- |
+| `name`       | string     | DTO class name                |
 | `properties` | Property[] | Array of property definitions |
 
 ### Property Properties
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `name` | string | Property name |
-| `type` | string | TypeScript type |
+| Property   | Type    | Description                  |
+| ---------- | ------- | ---------------------------- |
+| `name`     | string  | Property name                |
+| `type`     | string  | TypeScript type              |
 | `required` | boolean | Whether property is required |
 
 ## Creating a New API
@@ -147,6 +149,7 @@ export class AppModule {}
 3. **Define your routes and DTOs**
 
 4. **Run generation**:
+
    ```bash
    npm run generate:api
    ```
@@ -165,13 +168,44 @@ For each API definition, the following files are generated:
 ```
 src/
 ├── {baseRoute}/
-│   ├── {baseRoute}.module.ts      # NestJS Module
-│   ├── {baseRoute}.controller.ts  # NestJS Controller
-│   ├── {baseRoute}.service.ts     # NestJS Service
+│   ├── {baseRoute}.module.ts           # NestJS Module
+│   ├── {baseRoute}.controller.ts       # NestJS Controller
+│   ├── {baseRoute}.controller.spec.ts  # Jest unit tests for controller
+│   ├── {baseRoute}.service.ts          # NestJS Service
+│   ├── {baseRoute}.service.spec.ts     # Jest unit tests for service
 │   └── dto/
-│       ├── {DtoName1}.dto.ts      # Request/Response DTOs
+│       ├── {DtoName1}.dto.ts           # Request/Response DTOs
 │       └── {DtoName2}.dto.ts
 ```
+
+## Unit Test Generation
+
+When you run `npm run generate:api` or `npm run generate:api:run`, Jest unit test files are automatically created:
+
+- **Controller spec files** test all HTTP endpoints
+- **Service spec files** test business logic and error handling
+
+Generated tests validate:
+
+- Basic operation of each route method
+- Required field validation (bad request errors)
+- Path parameter validation (not found errors)
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests for a specific feature
+npx jest src/{feature}/{feature}.service.spec.ts
+npx jest src/{feature}/{feature}.controller.spec.ts
+```
+
+When using `npm run generate:api:run`, tests are automatically executed and must pass before the server starts.
 
 ## Example: Creating a Products API
 
@@ -211,11 +245,13 @@ src/
 ```
 
 2. Run generation:
+
 ```bash
 npm run generate:api
 ```
 
 3. Update `src/generated.module.ts`:
+
 ```typescript
 import { ProductModule } from './product/product.module';
 
@@ -227,6 +263,7 @@ export class GeneratedModule {}
 ```
 
 4. Start the server:
+
 ```bash
 npm run start:dev
 ```

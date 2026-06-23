@@ -3,20 +3,24 @@
 ### 📋 Workflow
 
 1. **Create API Definition**
+
    ```bash
    # Create a new file in src/api-definitions/yourfeature.api.json
    ```
 
 2. **Define Routes and DTOs**
+
    - See `example.api.template.json` for structure
    - Use proper HTTP methods and TypeScript types
 
 3. **Generate APIs**
+
    ```bash
    npm run generate:api
    ```
 
 4. **Import Module**
+
    - Add your module to `src/generated.module.ts` imports
 
 5. **Run Server**

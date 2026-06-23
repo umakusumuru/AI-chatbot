@@ -1,9 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class SendMessageDto {
+export class TranslateDto {
   @ApiProperty({ required: true, type: String })
-  message!: string;
+  text!: string;
 
   @ApiPropertyOptional({ required: false, type: String })
-  sessionId?: string;
+  lang?: string;
 }

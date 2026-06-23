@@ -1,5 +1,21 @@
-import { Controller, Body, Param, Get, Post, Put, Delete, Patch } from '@nestjs/common';
-import { ApiBody, ApiBadRequestResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  Body,
+  Param,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Patch,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/CreateUserDto.dto';
@@ -24,7 +40,9 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Successful response.' })
   @ApiBadRequestResponse({ description: 'Invalid request.' })
   @ApiBody({ type: CreateUserDto })
-  createUser(@Body() body: CreateUserDto): Observable<{ id: string; name: string; email: string }> {
+  createUser(
+    @Body() body: CreateUserDto
+  ): Observable<{ id: string; name: string; email: string }> {
     return this.service.createUser(body);
   }
 
@@ -34,8 +52,9 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Successful response.' })
   @ApiBadRequestResponse({ description: 'Invalid request.' })
   @ApiNotFoundResponse({ description: 'Resource not found.' })
-  getUserById(@Param('id') id: string): Observable<{ id: string; name: string; email: string }> {
+  getUserById(
+    @Param('id') id: string
+  ): Observable<{ id: string; name: string; email: string }> {
     return this.service.getUserById(id);
   }
-
 }
