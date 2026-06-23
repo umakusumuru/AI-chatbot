@@ -7,6 +7,8 @@ export interface ApiDtoProperty {
   name: string;
   type: string;
   required?: boolean;
+  properties?: ApiDtoProperty[];
+  items?: any;
 }
 
 export interface ApiRoute {
@@ -81,27 +83,96 @@ function mapSwaggerType(type: string) {
 }
 
 function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
-  const lines = properties.map((prop) => {
-    const optional = prop.required ? '!' : '?';
-    const swaggerType = mapSwaggerType(prop.type);
-    const decorator = prop.required
-      ? `  @ApiProperty({ required: true, type: ${swaggerType} })`
-      : `  @ApiPropertyOptional({ required: false, type: ${swaggerType} })`;
+  const classes: string[] = [];
 
-    return `${decorator}
-  /** ${prop.name} field${prop.required ? ' (required)' : ' (optional)'} */
-  ${prop.name}${optional}: ${prop.type};`;
-  });
+  function buildClass(name: string, props: ApiDtoProperty[]) {
+    const propLines: string[] = [];
 
-  return `import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+    for (const prop of props) {
+      const optional = prop.required ? '!' : '?';
 
-/**
- * Data Transfer Object for ${dtoName}
- * Defines the structure of request/response data
- */
-export class ${dtoName} {
-${lines.join('\n\n')}
-}`;
+      // Nested object
+      if (prop.properties && prop.properties.length) {
+        const nestedName = `${name}${capitalize(prop.name)}`;
+        // recurse to build nested class
+        buildClass(nestedName, prop.properties);
+
+        const decorator = prop.required
+          ? `  @ApiProperty({ required: true, type: ${nestedName} })`
+          : `  @ApiPropertyOptional({ required: false, type: ${nestedName} })`;
+
+        propLines.push(
+          `${decorator}\n  /** ${prop.name} field${
+            prop.required ? ' (required)' : ' (optional)'
+          } */\n  ${prop.name}${optional}: ${nestedName};`
+        );
+        continue;
+      }
+
+      // Array type
+      if (
+        prop.type &&
+        (prop.type.includes('[]') ||
+          prop.type === 'array' ||
+          (prop as any).items)
+      ) {
+        const items = (prop as any).items;
+        if (items && items.type === 'object' && items.properties) {
+          const nestedName = `${name}${capitalize(prop.name)}Item`;
+          buildClass(nestedName, items.properties as ApiDtoProperty[]);
+          const decorator = prop.required
+            ? `  @ApiProperty({ required: true, type: ${nestedName}, isArray: true })`
+            : `  @ApiPropertyOptional({ required: false, type: ${nestedName}, isArray: true })`;
+          propLines.push(
+            `${decorator}\n  /** ${prop.name} field${
+              prop.required ? ' (required)' : ' (optional)'
+            } */\n  ${prop.name}${optional}: ${nestedName}[];`
+          );
+        } else {
+          const swaggerType = mapSwaggerType(items?.type || 'string');
+          const tsType =
+            items?.type && items.type.includes('number') ? 'number' : 'string';
+          const decorator = prop.required
+            ? `  @ApiProperty({ required: true, type: ${swaggerType}, isArray: true })`
+            : `  @ApiPropertyOptional({ required: false, type: ${swaggerType}, isArray: true })`;
+          propLines.push(
+            `${decorator}\n  /** ${prop.name} field${
+              prop.required ? ' (required)' : ' (optional)'
+            } */\n  ${prop.name}${optional}: ${tsType}[];`
+          );
+        }
+        continue;
+      }
+
+      // Primitive types
+      const swaggerType = mapSwaggerType(prop.type || 'string');
+      const tsType =
+        prop.type && prop.type.includes('number')
+          ? 'number'
+          : prop.type && prop.type.includes('boolean')
+          ? 'boolean'
+          : 'string';
+      const decorator = prop.required
+        ? `  @ApiProperty({ required: true, type: ${swaggerType} })`
+        : `  @ApiPropertyOptional({ required: false, type: ${swaggerType} })`;
+
+      propLines.push(
+        `${decorator}\n  /** ${prop.name} field${
+          prop.required ? ' (required)' : ' (optional)'
+        } */\n  ${prop.name}${optional}: ${tsType};`
+      );
+    }
+
+    const classSrc = `export class ${name} {\n${propLines.join('\n\n')}\n}`;
+    classes.push(classSrc);
+  }
+
+  // start building from root DTO
+  buildClass(dtoName, properties);
+
+  const header = `import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';\n\n/**\n * Data Transfer Object for ${dtoName}\n * Defines the structure of request/response data\n */`;
+
+  return `${header}\n\n${classes.join('\n\n')}`;
 }
 
 function createRouteMethod(route: ApiRoute) {
@@ -380,17 +451,46 @@ ${methods}}\n`;
 }
 
 function buildSampleDtoBody(properties: ApiDtoProperty[]) {
-  const lines = properties.map((prop) => {
-    if (prop.type.includes('string'))
-      return `      ${prop.name}: '${prop.name}-sample',`;
-    if (prop.type.includes('number')) return `      ${prop.name}: 1,`;
-    if (prop.type.includes('boolean')) return `      ${prop.name}: true,`;
-    if (prop.type.includes('[]')) return `      ${prop.name}: [],`;
-    return `      ${prop.name}: null,`;
-  });
-  return `{
-${lines.join('\n')}
-    }`;
+  function buildObj(props: ApiDtoProperty[], indent = 6): string {
+    const lines: string[] = [];
+    const pad = ' '.repeat(indent);
+    for (const prop of props) {
+      if (prop.properties && prop.properties.length) {
+        const nested = buildObj(prop.properties, indent + 2);
+        lines.push(`${pad}${prop.name}: ${nested},`);
+        continue;
+      }
+
+      if (
+        prop.type &&
+        (prop.type.includes('[]') ||
+          prop.type === 'array' ||
+          (prop as any).items)
+      ) {
+        const items = (prop as any).items;
+        if (items && items.type === 'object' && items.properties) {
+          const itemSample = buildObj(items.properties, indent + 4);
+          lines.push(`${pad}${prop.name}: [${itemSample}],`);
+        } else if (items && items.type && items.type.includes('number')) {
+          lines.push(`${pad}${prop.name}: [1],`);
+        } else {
+          lines.push(`${pad}${prop.name}: ['${prop.name}-sample'],`);
+        }
+        continue;
+      }
+
+      if (prop.type && prop.type.includes('string'))
+        lines.push(`${pad}${prop.name}: '${prop.name}-sample',`);
+      else if (prop.type && prop.type.includes('number'))
+        lines.push(`${pad}${prop.name}: 1,`);
+      else if (prop.type && prop.type.includes('boolean'))
+        lines.push(`${pad}${prop.name}: true,`);
+      else lines.push(`${pad}${prop.name}: null,`);
+    }
+    return `{\n${lines.join('\n')}\n${' '.repeat(indent - 2)}}`;
+  }
+
+  return buildObj(properties, 6);
 }
 
 function buildServiceSpecSource(description: ApiDescription) {

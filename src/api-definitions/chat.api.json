@@ -20,8 +20,35 @@
       "requestDto": {
         "name": "SendMessageDto",
         "properties": [
-          { "name": "message", "type": "string", "required": true },
-          { "name": "sessionId", "type": "string", "required": false }
+          {
+            "name": "message",
+            "type": "object",
+            "required": true,
+            "properties": [
+              {
+                "name": "text",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "sender",
+                "type": "object",
+                "required": true,
+                "properties": [
+                  {
+                    "name": "userId",
+                    "type": "string",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "sessionId",
+            "type": "string",
+            "required": false
+          }
         ]
       },
       "responseType": "{ reply: string }"

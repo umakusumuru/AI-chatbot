@@ -87,6 +87,18 @@ npm run generate:api -- --definitions=./src/api-definitions --output=./generated
 
 This will generate files into `./generated-api` and read definitions from `./src/api-definitions`.
 
+If you install this generator as a package in another project, place your `.api.json` definitions in that project under:
+
+```bash
+<project-root>/src/api-definitions/
+```
+
+Or use a custom definitions folder by passing `--definitions`:
+
+```bash
+npm run generate:api -- --definitions=./my-api-definitions --output=./generated-api
+```
+
 For a single API file and a custom output folder:
 
 ```bash
