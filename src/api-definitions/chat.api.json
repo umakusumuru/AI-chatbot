@@ -20,38 +20,20 @@
       "requestDto": {
         "name": "SendMessageDto",
         "properties": [
+          { "name": "message", "type": "string", "required": true },
+          { "name": "sessionId", "type": "string", "required": false },
+          { "name": "userId", "type": "string", "required": false },
           {
-            "name": "message",
+            "name": "chatlist",
             "type": "object",
-            "required": true,
+            "required": false,
             "properties": [
-              {
-                "name": "text",
-                "type": "string",
-                "required": true
-              },
-              {
-                "name": "sender",
-                "type": "object",
-                "required": true,
-                "properties": [
-                  {
-                    "name": "userId",
-                    "type": "string",
-                    "required": true
-                  }
-                ]
-              }
+              { "name": "chat1", "type": "string", "required": false }
             ]
-          },
-          {
-            "name": "sessionId",
-            "type": "string",
-            "required": false
           }
         ]
       },
-      "responseType": "{ reply: string }"
+      "responseType": "{ reply: string; sessionId: string }"
     }
   ]
 }

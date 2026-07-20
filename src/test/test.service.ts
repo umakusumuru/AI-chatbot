@@ -4,22 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Observable, of, throwError } from 'rxjs';
-import { CreateUserDto } from './dto/CreateUserDto.dto';
+import { CreateTestdataDto } from './dto/CreateTestdataDto.dto';
 
 /**
- * UserService
+ * TestService
  *
- * Service for the user feature.
- * Contains business logic for all user operations.
+ * Service for the test feature.
+ * Contains business logic for all test operations.
  */
 @Injectable()
-export class UserService {
+export class TestService {
   /**
-   * Fetch all users
+   * Fetch all test data
    *
    * @returns Observable of type { id: string; name: string; email: string }[]
    */
-  getAllUsers(): Observable<{ id: string; name: string; email: string }[]> {
+  getAlltestdata(): Observable<{ id: string; name: string; email: string }[]> {
     // Test data - Replace with actual business logic
     return of([
       {
@@ -36,13 +36,13 @@ export class UserService {
   }
 
   /**
-   * Create a new user
+   * Create a new test data
    *
-   * @param body - The request payload (CreateUserDto)
+   * @param body - The request payload (CreateTestdataDto)
    * @returns Observable of type { id: string; name: string; email: string }
    */
-  createUser(
-    body: CreateUserDto
+  createTestdata(
+    body: CreateTestdataDto
   ): Observable<{ id: string; name: string; email: string }> {
     const missingFields = ['name', 'email'].filter(
       (key) => !(body as any)?.[key]
@@ -66,11 +66,11 @@ export class UserService {
   }
 
   /**
-   * Get user by ID
+   * Get test data by ID
    * @param id - The resource identifier
    * @returns Observable of type { id: string; name: string; email: string }
    */
-  getUserById(
+  getTestdataById(
     id: string
   ): Observable<{ id: string; name: string; email: string }> {
     if (id === '0') {
@@ -80,7 +80,7 @@ export class UserService {
     // Test data - Replace with actual business logic
     return of({
       id: id,
-      name: 'Sample GetUserById',
+      name: 'Sample GetTestdataById',
       email: 'sample@example.com',
     } as unknown as { id: string; name: string; email: string });
   }

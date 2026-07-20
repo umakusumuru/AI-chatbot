@@ -1,0 +1,57 @@
+{
+  "featureName": "emp",
+  "baseRoute": "emp",
+  "moduleClassName": "EmpModule",
+  "controllerClassName": "EmpController",
+  "serviceClassName": "EmpService",
+  "routes": [
+    {
+      "method": "get",
+      "path": "getemp",
+      "actionName": "getEmp",
+      "summary": "Returns employee information",
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "post",
+      "path": "updateemp",
+      "actionName": "updateEmp",
+      "summary": "Updates employee information",
+      "requestDto": {
+        "name": "UpdateEmpDto",
+        "properties": [
+          {
+            "name": "message",
+            "type": "object",
+            "required": true,
+            "properties": [
+              {
+                "name": "text",
+                "type": "string",
+                "required": true
+              },
+              {
+                "name": "sender",
+                "type": "object",
+                "required": true,
+                "properties": [
+                  {
+                    "name": "userId",
+                    "type": "string",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "sessionId",
+            "type": "string",
+            "required": false
+          }
+        ]
+      },
+      "responseType": "{ reply: string }"
+    }
+  ]
+}

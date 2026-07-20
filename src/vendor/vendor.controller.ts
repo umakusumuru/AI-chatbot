@@ -20,12 +20,26 @@ import { Observable } from 'rxjs';
 import { VendorService } from './vendor.service';
 import { TranslateDto } from './dto/TranslateDto.dto';
 
+/**
+ * VendorController
+ *
+ * Handles HTTP requests for the vendor feature.
+ * Routes are prefixed with /vendor.
+ */
 @ApiTags('vendor')
 @Controller('vendor')
 export class VendorController {
+  /**
+   * Constructor
+   * @param service - The VendorService instance
+   */
   constructor(private readonly service: VendorService) {}
 
-  // Proxy to external vendor API (example)
+  /**
+   * Proxy to external vendor API (example)
+   * @param body - The request payload (TranslateDto)
+   * @returns Observable of type any
+   */
   @Post('translate')
   @ApiOperation({ summary: 'Proxy to external vendor API (example)' })
   @ApiResponse({ status: 200, description: 'Successful response.' })

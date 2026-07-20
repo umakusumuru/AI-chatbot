@@ -1,20 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserService } from './user.service';
+import { TestService } from './test.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
-describe('UserService', () => {
-  let service: UserService;
+describe('TestService', () => {
+  let service: TestService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserService],
+      providers: [TestService],
     }).compile();
 
-    service = module.get<UserService>(UserService);
+    service = module.get<TestService>(TestService);
   });
 
-  it('should getAllUsers', (done) => {
-    service.getAllUsers().subscribe({
+  it('should getAlltestdata', (done) => {
+    service.getAlltestdata().subscribe({
       next: (result) => {
         expect(result).toBeDefined();
         done();
@@ -23,9 +23,9 @@ describe('UserService', () => {
     });
   });
 
-  it('should createUser', (done) => {
+  it('should createTestdata', (done) => {
     service
-      .createUser({
+      .createTestdata({
         name: 'name-sample',
         email: 'email-sample',
         age: 1,
@@ -39,8 +39,8 @@ describe('UserService', () => {
       });
   });
 
-  it('should return bad request when required fields are missing for createUser', (done) => {
-    service.createUser({} as any).subscribe({
+  it('should return bad request when required fields are missing for createTestdata', (done) => {
+    service.createTestdata({} as any).subscribe({
       next: () => done(new Error('Expected error')),
       error: (error) => {
         expect(error).toBeInstanceOf(BadRequestException);
@@ -49,8 +49,8 @@ describe('UserService', () => {
     });
   });
 
-  it('should getUserById', (done) => {
-    service.getUserById('1').subscribe({
+  it('should getTestdataById', (done) => {
+    service.getTestdataById('1').subscribe({
       next: (result) => {
         expect(result).toBeDefined();
         done();
@@ -59,8 +59,8 @@ describe('UserService', () => {
     });
   });
 
-  it('should return not found for id 0 on getUserById', (done) => {
-    service.getUserById('0').subscribe({
+  it('should return not found for id 0 on getTestdataById', (done) => {
+    service.getTestdataById('0').subscribe({
       next: () => done(new Error('Expected error')),
       error: (error) => {
         expect(error).toBeInstanceOf(NotFoundException);

@@ -8,7 +8,7 @@ const config: Config.InitialOptions = {
   roots: ['<rootDir>/src'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
+  coverageReporters: ['text', 'lcov', 'json-summary'],
 };
 
 export default config;

@@ -1,21 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserController } from './user.controller';
-import { UserService } from './user.service';
+import { TestController } from './test.controller';
+import { TestService } from './test.service';
 
-describe('UserController', () => {
-  let controller: UserController;
+describe('TestController', () => {
+  let controller: TestController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [UserController],
-      providers: [UserService],
+      controllers: [TestController],
+      providers: [TestService],
     }).compile();
 
-    controller = module.get<UserController>(UserController);
+    controller = module.get<TestController>(TestController);
   });
 
-  it('should getAllUsers', (done) => {
-    controller.getAllUsers().subscribe({
+  it('should getAlltestdata', (done) => {
+    controller.getAlltestdata().subscribe({
       next: (result) => {
         expect(result).toBeDefined();
         done();
@@ -24,9 +24,9 @@ describe('UserController', () => {
     });
   });
 
-  it('should createUser', (done) => {
+  it('should createTestdata', (done) => {
     controller
-      .createUser({
+      .createTestdata({
         name: 'name-sample',
         email: 'email-sample',
         age: 1,
@@ -40,8 +40,8 @@ describe('UserController', () => {
       });
   });
 
-  it('should getUserById', (done) => {
-    controller.getUserById('1').subscribe({
+  it('should getTestdataById', (done) => {
+    controller.getTestdataById('1').subscribe({
       next: (result) => {
         expect(result).toBeDefined();
         done();

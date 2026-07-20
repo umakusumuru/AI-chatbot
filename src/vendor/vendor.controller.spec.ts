@@ -14,12 +14,18 @@ describe('VendorController', () => {
     controller = module.get<VendorController>(VendorController);
   });
 
-  it('should return an observable for translation', (done) => {
+  it('should translateText', (done) => {
     controller
-      .translateText({ text: 'hello', lang: 'es' } as any)
-      .subscribe((result) => {
-        expect(result).toBeDefined();
-        done();
+      .translateText({
+        text: 'text-sample',
+        lang: 'lang-sample',
+      })
+      .subscribe({
+        next: (result) => {
+          expect(result).toBeDefined();
+          done();
+        },
+        error: done,
       });
   });
 });

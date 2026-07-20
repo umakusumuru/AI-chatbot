@@ -57,6 +57,30 @@ Example definition file structure:
 }
 ```
 
+## API Definition Validation
+
+Before generating any code, `generate:api:run` validates every `.api.json` file and reports all errors up front:
+
+- Missing or wrong-type required fields (`featureName`, `baseRoute`, `moduleClassName`, etc.)
+- `moduleClassName` not ending with `Module`, `controllerClassName` not ending with `Controller`, etc.
+- Invalid HTTP method (must be one of `get`, `post`, `put`, `delete`, `patch`)
+- Missing `actionName` or duplicate action names within the same file
+- Malformed `requestDto` properties (missing `name` or `type`)
+- Malformed `vendor` block (missing `url`, wrong `headers` type, invalid `method`)
+- Invalid JSON syntax
+
+Example error output:
+
+```
+❌ API definition validation failed:
+
+  chat.api.json
+    • chat.api.json → routes[1].method: must be one of [get, post, put, delete, patch], got "fetch"
+    • chat.api.json → routes[1].requestDto.properties[0].type: required non-empty string, got undefined
+```
+
+The command exits immediately so no files are generated or overwritten until all definitions are clean.
+
 ## Generate APIs
 
 Run the API generation script:
@@ -76,8 +100,97 @@ npm run generate:api -- --file=chat.api.json
 Or use the feature name directly:
 
 ```bash
-npm run generate:api -- --api=chat
+npm run generate:api -- --api=emp
 ```
+
+## Generate or Update Unit Tests Only
+
+If you modify controller or service logic manually, do not rerun full API generation. Full generation can overwrite your code.
+
+Run:
+
+```bash
+npm run generate:api-tests
+```
+
+For a single API definition file:
+
+```bash
+npm run generate:api-tests -- --file=chat.api.json
+```
+
+For a direct path to a definition file:
+
+```bash
+npm run generate:api-tests -- src/api-definitions/chat.api.json
+```
+
+For a controller or service source file:
+
+```bash
+npm run generate:api-tests -- src/chat/chat.controller.ts
+npm run generate:api-tests -- src/chat/chat.service.ts
+```
+
+For a folder of controller/service files:
+
+```bash
+npm run generate:api-tests -- src/chat
+```
+
+For a directory path and all API definitions in it:
+
+```bash
+npm run generate:api-tests -- src/api-definitions
+```
+
+Or use the feature name directly:
+
+```bash
+npm run generate:api-tests -- --api=chat
+```
+
+## Use as a Package in Another Project
+
+If you install this repo as a dependency in another project, the package exports the generator API from `src/index.ts`.
+
+### Recommended setup in the consuming project
+
+- Place API `.api.json` files under:
+
+```bash
+<project-root>/src/api-definitions/
+```
+
+- Install the package and run generation from the consuming project:
+
+```bash
+npm install <your-package-name>
+npm run generate:api -- --definitions=./src/api-definitions --output=./src
+```
+
+### Custom definitions path
+
+If you want definitions in a different folder, pass `--definitions`:
+
+```bash
+npm run generate:api -- --definitions=./my-api-definitions --output=./src
+```
+
+### Programmatic use
+
+Import the generator functions from the package:
+
+```ts
+import {
+  generateApiFromFile,
+  generateApisFromDirectory,
+  createAgentApiFiles,
+  writeGeneratedModuleFile,
+} from 'ai-chatbot';
+```
+
+Then call them from your own script.
 
 Specify the output path and definitions path when generating from another repo or from a different directory layout:
 
@@ -128,16 +241,19 @@ npm run generate:api:run
 
 This command automatically:
 
-1. Generates API modules, controllers, and services
-2. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
-3. Builds the TypeScript project
-4. **Runs all Jest unit tests** (must pass before continuing)
-5. Starts the built server on `http://localhost:4000/api`
-6. Validates generated API endpoints
+1. **Validates** all `.api.json` definition files — reports field-level errors before any code is written
+2. Generates API modules, controllers, and services
+3. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
+4. Builds the TypeScript project
+5. **Runs Jest unit tests** (must pass before continuing; scoped to the targeted feature when `--file` or `--api` is used)
+6. Starts the built server on `http://localhost:4000/api`
+7. Validates generated API endpoints
 
 When Prettier and ESLint are installed locally, generated files are also formatted and linted automatically during generation.
 
 If any unit tests fail, the command stops and reports errors without starting the server.
+
+> Note: if you have manually modified controller or service source code, use `npm run generate:api-tests` to regenerate only the unit test files. This avoids overwriting your custom logic.
 
 ### Individual Command Options
 
@@ -147,6 +263,8 @@ Run the full workflow for a single API definition:
 npm run generate:api:run -- --file=chat.api.json
 ```
 
+When `--file` or `--api` is provided, Jest runs **only the spec files for that feature** (e.g. `src/chat/*.spec.ts`). Other features such as `user` or `vendor` are not tested. Without a flag, the full test suite runs.
+
 Or use the feature name directly:
 
 ```bash
@@ -154,6 +272,7 @@ npm run generate:api:run -- --api=chat
 ```
 
 Specify paths for custom layouts:
+
 
 ```bash
 npm run generate:api:run -- --definitions=./src/api-definitions --output=./generated-api
@@ -319,3 +438,80 @@ Notes:
 - The generator will emit code that templates `url`, `headers`, and `mapRequest` using `{{...}}` placeholders.
 - `mapResponse` (optional) lets you reshape the vendor response before returning it from your API.
 - The generated services use the global `fetch` API; on Node versions older than v18, install a fetch polyfill such as `node-fetch`.
+
+
+Commands
+
+1) Run the API generation script:
+
+npm run generate:api
+
+npm run generate:api -- --file=chat.api.json
+
+		Or use the feature name directly:
+
+npm run generate:api:run -- --api=emp
+
+
+
+2) If you have modified any code , pls run below command for spec file update
+
+npm run generate:api-tests
+
+		For a single API definition file:
+
+npm run generate:api-tests -- --file=chat.api.json
+
+		For a direct path to a definition file:
+
+
+npm run generate:api-tests -- src/api-definitions/chat.api.json
+
+
+npm run generate:api-tests -- src/chat/chat.controller.ts
+npm run generate:api-tests -- src/chat/chat.service.ts
+
+
+
+3) consuming this project in another , then you can run below command with path
+
+npm run generate:api -- --definitions=./src/api-definitions --output=./src
+
+		To generate APIs with automatic unit test cases, build the project, validate tests, start the app, and test endpoints in one command:
+
+npm run generate:api:run
+npm run generate:api:run -- --api=chat
+```
+
+This command automatically:
+
+1. **Validates** all `.api.json` definition files — reports field-level errors before any code is written
+2. Generates API modules, controllers, and services
+3. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
+4. Builds the TypeScript project
+5. **Runs Jest unit tests** (must pass before continuing; scoped to the targeted feature when `--file` or `--api` is used)
+6. Starts the built server on `http://localhost:4000/api`
+7. Validates generated API endpoints
+
+
+------AI-----
+
+
+set OPENAI_API_KEY=<YOUR_OPENAI_API_KEY_HERE>
+
+
+$env:OPENAI_API_KEY="<YOUR_OPENAI_API_KEY_HERE>"
+npm run generate:api:geminii
+
+
+# Generate APIs using AI
+npm run generate:api:geminii
+
+# Or run the full workflow with AI generation
+set USE_GEMINII=true
+npm run generate:api:run
+
+
+
+
+

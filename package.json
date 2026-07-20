@@ -2,6 +2,8 @@
   "name": "ai-chatbot",
   "version": "0.0.1",
   "description": "AI chatbot backend API",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
@@ -12,6 +14,7 @@
     "generate:swagger": "ts-node scripts/generate-swagger.ts",
     "format": "prettier --write .",
     "lint:fix": "eslint . --ext .ts --fix",
+    "generate:api-tests": "ts-node scripts/generate-api-tests.ts",
     "test": "jest --config jest.config.ts",
     "test:watch": "jest --config jest.config.ts --watch"
   },

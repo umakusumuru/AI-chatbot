@@ -430,13 +430,21 @@ function buildServiceSource(description: ApiDescription) {
         }.dto';`
     );
 
+  const hasVendorRoutes = description.routes.some((route) => route.vendor);
+
+  const rxjsImports = hasVendorRoutes
+    ? 'Observable, of, throwError, from'
+    : 'Observable, of, throwError';
+
   const allImports = [
     'import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";',
-    'import { Observable, of, throwError, from } from "rxjs";',
+    `import { ${rxjsImports} } from "rxjs";`,
     ...dtoImports,
   ];
 
-  const helper = `\n// Helper: simple template resolver for objects/strings containing {{...}} placeholders\nfunction __resolvePath(path: string, ctx: any) {\n  try {\n    const parts = path.split('.');\n    let cur: any = ctx;\n    for (const p of parts) {\n      if (cur == null) return undefined;\n      cur = cur[p];\n    }\n    return cur;\n  } catch (e) {\n    return undefined;\n  }\n}\n\nfunction __applyTemplate(template: any, ctx: any): any {\n  if (template == null) return template;\n  if (Array.isArray(template)) return template.map((t) => __applyTemplate(t, ctx));\n  if (typeof template === 'object') {\n    const out: any = {};\n    for (const k of Object.keys(template)) {\n      out[k] = __applyTemplate((template as any)[k], ctx);\n    }\n    return out;\n  }\n  if (typeof template === 'string') {\n    return template.replace(/\\{\\{(.+?)\\}\\}/g, (_m, expr) => {\n      const val = __resolvePath(expr.trim(), ctx);\n      return val == null ? '' : String(val);\n    });\n  }\n  return template;\n}\n`;
+  const helper = hasVendorRoutes
+    ? `\n// Helper: simple template resolver for objects/strings containing {{...}} placeholders\nfunction __resolvePath(path: string, ctx: any) {\n  try {\n    const parts = path.split('.');\n    let cur: any = ctx;\n    for (const p of parts) {\n      if (cur == null) return undefined;\n      cur = cur[p];\n    }\n    return cur;\n  } catch (e) {\n    return undefined;\n  }\n}\n\nfunction __applyTemplate(template: any, ctx: any): any {\n  if (template == null) return template;\n  if (Array.isArray(template)) return template.map((t) => __applyTemplate(t, ctx));\n  if (typeof template === 'object') {\n    const out: any = {};\n    for (const k of Object.keys(template)) {\n      out[k] = __applyTemplate((template as any)[k], ctx);\n    }\n    return out;\n  }\n  if (typeof template === 'string') {\n    return template.replace(/\\{\\{(.+?)\\}\\}/g, (_m, expr) => {\n      const val = __resolvePath(expr.trim(), ctx);\n      return val == null ? '' : String(val);\n    });\n  }\n  return template;\n}\n`
+    : '\n';
 
   return `${allImports.join('\n')}${helper}
 /**
@@ -794,6 +802,63 @@ export async function createAgentApiFiles(
       );
     }
   }
+}
+
+export async function createAgentApiTestFiles(
+  description: ApiDescription,
+  rootDir: string
+) {
+  const featureDir = join(rootDir, description.baseRoute);
+
+  await ensureDirectory(featureDir);
+
+  await writeFileContent(
+    join(featureDir, `${description.baseRoute}.controller.spec.ts`),
+    buildControllerSpecSource(description)
+  );
+  await writeFileContent(
+    join(featureDir, `${description.baseRoute}.service.spec.ts`),
+    buildServiceSpecSource(description)
+  );
+}
+
+export async function generateApiTestsFromFile(
+  definitionFilePath: string,
+  outputDir: string
+): Promise<ApiDescription> {
+  const description = await readApiDescriptionFile(definitionFilePath);
+  await createAgentApiTestFiles(description, outputDir);
+  console.log(
+    `✓ Generated test files for feature '${description.featureName}' from ${definitionFilePath}`
+  );
+  return description;
+}
+
+export async function generateApiTestsFromDirectory(
+  definitionsDir: string,
+  outputDir: string
+): Promise<ApiDescription[]> {
+  const files = await readdir(definitionsDir);
+  const apiFiles = files.filter((f) => f.endsWith('.api.json'));
+
+  if (apiFiles.length === 0) {
+    console.log(`No .api.json files found in ${definitionsDir}`);
+    return [];
+  }
+
+  const descriptions: ApiDescription[] = [];
+
+  for (const file of apiFiles) {
+    const filePath = join(definitionsDir, file);
+    const description = await readApiDescriptionFile(filePath);
+    await createAgentApiTestFiles(description, outputDir);
+    descriptions.push(description);
+    console.log(
+      `✓ Generated test files for feature '${description.featureName}' from ${file}`
+    );
+  }
+
+  return descriptions;
 }
 
 export async function readApiDescriptionFile(

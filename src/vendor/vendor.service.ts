@@ -40,6 +40,12 @@ function __applyTemplate(template: any, ctx: any): any {
   return template;
 }
 
+/**
+ * VendorService
+ *
+ * Service for the vendor feature.
+ * Contains business logic for all vendor operations.
+ */
 @Injectable()
 export class VendorService {
   translateText(body: TranslateDto): Observable<any> {
