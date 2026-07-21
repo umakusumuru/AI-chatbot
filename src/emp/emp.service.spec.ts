@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EmpService } from './emp.service';
-import { BadRequestException } from '@nestjs/common';
 
 describe('EmpService', () => {
   let service: EmpService;
@@ -41,15 +40,5 @@ describe('EmpService', () => {
         },
         error: done,
       });
-  });
-
-  it('should return bad request when required fields are missing for updateEmp', (done) => {
-    service.updateEmp({} as any).subscribe({
-      next: () => done(new Error('Expected error')),
-      error: (error) => {
-        expect(error).toBeInstanceOf(BadRequestException);
-        done();
-      },
-    });
   });
 });

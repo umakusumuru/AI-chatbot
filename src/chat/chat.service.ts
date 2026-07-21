@@ -1,9 +1,5 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { Observable, of, throwError } from 'rxjs';
+import { Injectable } from '@nestjs/common';
+import { Observable, of } from 'rxjs';
 import { SendMessageDto } from './dto/SendMessageDto.dto';
 
 /**
@@ -37,16 +33,6 @@ export class ChatService {
   sendMessage(
     body: SendMessageDto
   ): Observable<{ reply: string; sessionId: string }> {
-    const missingFields = ['message'].filter((key) => !(body as any)?.[key]);
-    if (missingFields.length) {
-      return throwError(
-        () =>
-          new BadRequestException(
-            `Missing required field(s): ${missingFields.join(', ')}`
-          )
-      );
-    }
-
     // Test data - Replace with actual business logic
     return of({
       ...body,

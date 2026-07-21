@@ -328,29 +328,45 @@ function formatRoutePath(baseRoute: string, routePath: string): string {
   return normalized ? `${baseRoute}/${normalized}` : baseRoute;
 }
 
-interface RequestDtoDefinition {
+interface RequestDtoProperty {
   name: string;
-  properties: { name: string; type: string; required?: boolean }[];
+  type: string;
+  required?: boolean;
+  properties?: RequestDtoProperty[];
+  items?: { type?: string; properties?: RequestDtoProperty[] };
 }
 
-function sampleBodyForDto(dto: RequestDtoDefinition) {
+interface RequestDtoDefinition {
+  name: string;
+  properties: RequestDtoProperty[];
+}
+
+function buildSampleBody(properties: RequestDtoProperty[]): Record<string, unknown> {
   const body: Record<string, unknown> = {};
 
-  for (const property of dto.properties) {
-    if (property.type.includes('string')) {
+  for (const property of properties) {
+    if (property.properties && property.properties.length > 0) {
+      body[property.name] = buildSampleBody(property.properties);
+    } else if (property.type.includes('string')) {
       body[property.name] = `${property.name}-sample`;
     } else if (property.type.includes('number')) {
       body[property.name] = 1;
     } else if (property.type.includes('boolean')) {
       body[property.name] = true;
-    } else if (property.type.includes('[]')) {
+    } else if (property.type.includes('[]') || property.type === 'array') {
       body[property.name] = [];
+    } else if (property.type === 'object') {
+      body[property.name] = {};
     } else {
-      body[property.name] = null;
+      body[property.name] = `${property.name}-sample`;
     }
   }
 
   return body;
+}
+
+function sampleBodyForDto(dto: RequestDtoDefinition) {
+  return buildSampleBody(dto.properties);
 }
 
 function httpRequest(

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatService } from './chat.service';
-import { BadRequestException } from '@nestjs/common';
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -40,15 +39,5 @@ describe('ChatService', () => {
         },
         error: done,
       });
-  });
-
-  it('should return bad request when required fields are missing for sendMessage', (done) => {
-    service.sendMessage({} as any).subscribe({
-      next: () => done(new Error('Expected error')),
-      error: (error) => {
-        expect(error).toBeInstanceOf(BadRequestException);
-        done();
-      },
-    });
   });
 });

@@ -97,9 +97,13 @@ function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
         // recurse to build nested class
         buildClass(nestedName, prop.properties);
 
-        const decorator = prop.required
+        const apiDecorator = prop.required
           ? `  @ApiProperty({ required: true, type: ${nestedName} })`
           : `  @ApiPropertyOptional({ required: false, type: ${nestedName} })`;
+        const validationDecorators = prop.required
+          ? `  @ValidateNested()\n  @Type(() => ${nestedName})\n  @IsNotEmpty()`
+          : `  @ValidateNested()\n  @Type(() => ${nestedName})\n  @IsOptional()`;
+        const decorator = `${apiDecorator}\n${validationDecorators}`;
 
         propLines.push(
           `${decorator}\n  /** ${prop.name} field${
@@ -120,9 +124,13 @@ function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
         if (items && items.type === 'object' && items.properties) {
           const nestedName = `${name}${capitalize(prop.name)}Item`;
           buildClass(nestedName, items.properties as ApiDtoProperty[]);
-          const decorator = prop.required
+          const apiDecorator = prop.required
             ? `  @ApiProperty({ required: true, type: ${nestedName}, isArray: true })`
             : `  @ApiPropertyOptional({ required: false, type: ${nestedName}, isArray: true })`;
+          const validationDecorators = prop.required
+            ? `  @ValidateNested({ each: true })\n  @Type(() => ${nestedName})\n  @IsNotEmpty()`
+            : `  @ValidateNested({ each: true })\n  @Type(() => ${nestedName})\n  @IsOptional()`;
+          const decorator = `${apiDecorator}\n${validationDecorators}`;
           propLines.push(
             `${decorator}\n  /** ${prop.name} field${
               prop.required ? ' (required)' : ' (optional)'
@@ -132,9 +140,14 @@ function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
           const swaggerType = mapSwaggerType(items?.type || 'string');
           const tsType =
             items?.type && items.type.includes('number') ? 'number' : 'string';
-          const decorator = prop.required
+          const itemValidator = tsType === 'number' ? `  @IsNumber({}, { each: true })` : `  @IsString({ each: true })`;
+          const apiDecorator = prop.required
             ? `  @ApiProperty({ required: true, type: ${swaggerType}, isArray: true })`
             : `  @ApiPropertyOptional({ required: false, type: ${swaggerType}, isArray: true })`;
+          const validationDecorators = prop.required
+            ? `  @IsArray()\n${itemValidator}\n  @IsNotEmpty()`
+            : `  @IsArray()\n${itemValidator}\n  @IsOptional()`;
+          const decorator = `${apiDecorator}\n${validationDecorators}`;
           propLines.push(
             `${decorator}\n  /** ${prop.name} field${
               prop.required ? ' (required)' : ' (optional)'
@@ -152,9 +165,16 @@ function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
           : prop.type && prop.type.includes('boolean')
           ? 'boolean'
           : 'string';
-      const decorator = prop.required
+      const typeValidator = tsType === 'number'
+        ? `  @IsNumber()`
+        : tsType === 'boolean'
+        ? `  @IsBoolean()`
+        : `  @IsString()`;
+      const requiredValidator = prop.required ? `  @IsNotEmpty()` : `  @IsOptional()`;
+      const apiDecorator = prop.required
         ? `  @ApiProperty({ required: true, type: ${swaggerType} })`
         : `  @ApiPropertyOptional({ required: false, type: ${swaggerType} })`;
+      const decorator = `${apiDecorator}\n${typeValidator}\n${requiredValidator}`;
 
       propLines.push(
         `${decorator}\n  /** ${prop.name} field${
@@ -170,7 +190,7 @@ function buildDtoSource(dtoName: string, properties: ApiDtoProperty[]) {
   // start building from root DTO
   buildClass(dtoName, properties);
 
-  const header = `import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';\n\n/**\n * Data Transfer Object for ${dtoName}\n * Defines the structure of request/response data\n */`;
+  const header = `import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';\nimport { IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';\nimport { Type } from 'class-transformer';\n\n/**\n * Data Transfer Object for ${dtoName}\n * Defines the structure of request/response data\n */`;
 
   return `${header}\n\n${classes.join('\n\n')}`;
 }
@@ -282,24 +302,6 @@ function buildServiceSource(description: ApiDescription) {
         .filter(Boolean)
         .join(', ');
       const returnType = route.responseType ?? 'any';
-      const requiredFields = route.requestDto
-        ? route.requestDto.properties
-            .filter((prop) => prop.required)
-            .map((prop) => prop.name)
-        : [];
-
-      let validationBlock = '';
-      if (requiredFields.length) {
-        validationBlock = `    const missingFields = [${requiredFields
-          .map((field) => `'${field}'`)
-          .join(', ')}].filter((key) => !(body as any)?.[key]);
-    if (missingFields.length) {
-      return throwError(() => new BadRequestException(\`Missing required field(s): \${missingFields.join(', ')}\`));
-    }
-
-`;
-      }
-
       let pathValidationBlock = '';
       if (hasPathParam) {
         pathValidationBlock = `    if (${paramName} === '0') {
@@ -362,7 +364,6 @@ function buildServiceSource(description: ApiDescription) {
           '(' +
           params +
           `): Observable<${returnType}> {\n` +
-          validationBlock +
           pathValidationBlock +
           '    // Vendor proxy - forwards request to external API\n' +
           '    const vendorUrl = __applyTemplate(' +
@@ -417,7 +418,7 @@ function buildServiceSource(description: ApiDescription) {
    */
   ${
     route.actionName
-  }(${params}): Observable<${returnType}> {\n${validationBlock}${pathValidationBlock}    // Test data - Replace with actual business logic\n    return of(${sampleResponse} as unknown as ${returnType});\n  }\n`;
+  }(${params}): Observable<${returnType}> {\n${pathValidationBlock}    // Test data - Replace with actual business logic\n    return of(${sampleResponse} as unknown as ${returnType});\n  }\n`;
     })
     .join('\n');
 
@@ -431,13 +432,20 @@ function buildServiceSource(description: ApiDescription) {
     );
 
   const hasVendorRoutes = description.routes.some((route) => route.vendor);
+  const hasPathParams = description.routes.some((route) => /:(\w+)/.test(route.path));
+  const needsThrowError = hasVendorRoutes || hasPathParams;
 
   const rxjsImports = hasVendorRoutes
     ? 'Observable, of, throwError, from'
-    : 'Observable, of, throwError';
+    : needsThrowError
+    ? 'Observable, of, throwError'
+    : 'Observable, of';
+
+  const nestCommonImports = ['Injectable'];
+  if (hasPathParams) nestCommonImports.push('NotFoundException');
 
   const allImports = [
-    'import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";',
+    `import { ${nestCommonImports.join(', ')} } from "@nestjs/common";`,
     `import { ${rxjsImports} } from "rxjs";`,
     ...dtoImports,
   ];
@@ -507,22 +515,11 @@ function buildServiceSpecSource(description: ApiDescription) {
     `import { ${description.serviceClassName} } from "./${description.baseRoute}.service";`,
   ];
 
-  const exceptionImports = new Set<string>();
   const routes = description.routes;
+  const hasPathRoutes = routes.some((route) => /:(\w+)/.test(route.path));
 
-  for (const route of routes) {
-    if (route.requestDto?.properties.some((prop) => prop.required)) {
-      exceptionImports.add('BadRequestException');
-    }
-    if (/:(\w+)/.test(route.path)) {
-      exceptionImports.add('NotFoundException');
-    }
-  }
-
-  if (exceptionImports.size > 0) {
-    imports.push(
-      `import { ${[...exceptionImports].join(', ')} } from "@nestjs/common";`
-    );
+  if (hasPathRoutes) {
+    imports.push(`import { NotFoundException } from "@nestjs/common";`);
   }
 
   const createBody = (route: ApiRoute) =>
@@ -545,13 +542,6 @@ function buildServiceSpecSource(description: ApiDescription) {
       )}).subscribe({\n      next: (result) => {\n        expect(result).toBeDefined();\n        done();\n      },\n      error: done,\n    });\n  });\n`;
 
       const failureTests: string[] = [];
-      if (route.requestDto?.properties.some((prop) => prop.required)) {
-        const missingBody = hasPathParam ? '"1", {} as any' : '{} as any';
-        failureTests.push(
-          `  it("should return bad request when required fields are missing for ${route.actionName}", (done) => {\n    service.${route.actionName}(${missingBody}).subscribe({\n      next: () => done(new Error("Expected error")),\n      error: (error) => {\n        expect(error).toBeInstanceOf(BadRequestException);\n        done();\n      },\n    });\n  });\n`
-        );
-      }
-
       if (hasPathParam) {
         const idArg = '"0"';
         const bodyArg = route.requestDto ? `, ${createBody(route)} as any` : '';

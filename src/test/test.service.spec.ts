@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TestService } from './test.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
 describe('TestService', () => {
   let service: TestService;
@@ -37,16 +37,6 @@ describe('TestService', () => {
         },
         error: done,
       });
-  });
-
-  it('should return bad request when required fields are missing for createTestdata', (done) => {
-    service.createTestdata({} as any).subscribe({
-      next: () => done(new Error('Expected error')),
-      error: (error) => {
-        expect(error).toBeInstanceOf(BadRequestException);
-        done();
-      },
-    });
   });
 
   it('should getTestdataById', (done) => {

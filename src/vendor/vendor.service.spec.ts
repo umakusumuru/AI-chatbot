@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { VendorService } from './vendor.service';
-import { BadRequestException } from '@nestjs/common';
 
 describe('VendorService', () => {
   let service: VendorService;
@@ -26,15 +25,5 @@ describe('VendorService', () => {
         },
         error: done,
       });
-  });
-
-  it('should return bad request when required fields are missing for translateText', (done) => {
-    service.translateText({} as any).subscribe({
-      next: () => done(new Error('Expected error')),
-      error: (error) => {
-        expect(error).toBeInstanceOf(BadRequestException);
-        done();
-      },
-    });
   });
 });

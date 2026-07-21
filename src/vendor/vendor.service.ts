@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Observable, of, throwError, from } from 'rxjs';
 import { TranslateDto } from './dto/TranslateDto.dto';
 // Helper: simple template resolver for objects/strings containing {{...}} placeholders
@@ -49,16 +45,6 @@ function __applyTemplate(template: any, ctx: any): any {
 @Injectable()
 export class VendorService {
   translateText(body: TranslateDto): Observable<any> {
-    const missingFields = ['text'].filter((key) => !(body as any)?.[key]);
-    if (missingFields.length) {
-      return throwError(
-        () =>
-          new BadRequestException(
-            `Missing required field(s): ${missingFields.join(', ')}`
-          )
-      );
-    }
-
     // Vendor proxy - forwards request to external API
     const vendorUrl = __applyTemplate('https://postman-echo.com/post', {
       body,

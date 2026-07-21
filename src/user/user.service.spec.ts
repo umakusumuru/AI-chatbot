@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
 describe('UserService', () => {
   let service: UserService;
@@ -37,16 +37,6 @@ describe('UserService', () => {
         },
         error: done,
       });
-  });
-
-  it('should return bad request when required fields are missing for createUser', (done) => {
-    service.createUser({} as any).subscribe({
-      next: () => done(new Error('Expected error')),
-      error: (error) => {
-        expect(error).toBeInstanceOf(BadRequestException);
-        done();
-      },
-    });
   });
 
   it('should getUserById', (done) => {
