@@ -311,6 +311,20 @@ function buildServiceSource(description: ApiDescription) {
 `;
       }
 
+      let bodyValidationBlock = '';
+      if (route.requestDto) {
+        const requiredFields = route.requestDto.properties
+          .filter((p) => p.required)
+          .map((p) => "'" + p.name + "'");
+        if (requiredFields.length) {
+          bodyValidationBlock =
+            "    const missingFields = [" + requiredFields.join(', ') + "].filter((key) => !(body as any)?.[key]);\n" +
+            "    if (missingFields.length) {\n" +
+            "      return throwError(() => new BadRequestException(`Missing required field(s): ${missingFields.join(', ')}`));\n" +
+            "    }\n\n";
+        }
+      }
+
       let sampleResponse = '{}';
       if (route.requestDto) {
         sampleResponse = `{
@@ -365,6 +379,7 @@ function buildServiceSource(description: ApiDescription) {
           params +
           `): Observable<${returnType}> {\n` +
           pathValidationBlock +
+          bodyValidationBlock +
           '    // Vendor proxy - forwards request to external API\n' +
           '    const vendorUrl = __applyTemplate(' +
           vendorUrlJson +
@@ -391,18 +406,33 @@ function buildServiceSource(description: ApiDescription) {
           returnType +
           ');\n' +
           '    }\n' +
-          "    return from(fetch(vendorUrl, { method: '" +
+          "    return from(\n" +
+          "      fetch(vendorUrl, { method: '" +
           vendorMethod +
           "', headers: vendorHeaders, body: vendorBody === undefined ? undefined : JSON.stringify(vendorBody) })\n" +
-          '      .then(res => res.json())\n' +
-          '      .then((vendorRes) => {\n' +
-          '        if (vendorRes == null) return vendorRes as unknown as ' +
+          "        .then((res) => {\n" +
+          "          if (!res.ok) {\n" +
+          "            throw new BadGatewayException(`Vendor responded with status ${res.status}`);\n" +
+          "          }\n" +
+          "          return res.json();\n" +
+          "        })\n" +
+          '        .then((vendorRes) => {\n' +
+          '          if (vendorRes == null) return vendorRes as unknown as ' +
           returnType +
           ';\n' +
-          '        ' +
+          '          ' +
           mapResponseStatement +
           '\n' +
-          '      }));\n' +
+          '        })\n' +
+          "    ).pipe(\n" +
+          "      catchError((err) =>\n" +
+          "        throwError(() =>\n" +
+          "          err instanceof BadGatewayException\n" +
+          "            ? err\n" +
+          "            : new BadGatewayException('Vendor request failed'),\n" +
+          "        ),\n" +
+          "      ),\n" +
+          "    );\n" +
           '  }\n'
         );
       }
@@ -418,7 +448,7 @@ function buildServiceSource(description: ApiDescription) {
    */
   ${
     route.actionName
-  }(${params}): Observable<${returnType}> {\n${pathValidationBlock}    // Test data - Replace with actual business logic\n    return of(${sampleResponse} as unknown as ${returnType});\n  }\n`;
+  }(${params}): Observable<${returnType}> {\n${pathValidationBlock}${bodyValidationBlock}    // Test data - Replace with actual business logic\n    return of(${sampleResponse} as unknown as ${returnType});\n  }\n`;
     })
     .join('\n');
 
@@ -433,7 +463,10 @@ function buildServiceSource(description: ApiDescription) {
 
   const hasVendorRoutes = description.routes.some((route) => route.vendor);
   const hasPathParams = description.routes.some((route) => /:(\w+)/.test(route.path));
-  const needsThrowError = hasVendorRoutes || hasPathParams;
+  const hasRequiredBodyFields = description.routes.some(
+    (route) => route.requestDto?.properties.some((p) => p.required),
+  );
+  const needsThrowError = hasVendorRoutes || hasPathParams || hasRequiredBodyFields;
 
   const rxjsImports = hasVendorRoutes
     ? 'Observable, of, throwError, from'
@@ -443,10 +476,13 @@ function buildServiceSource(description: ApiDescription) {
 
   const nestCommonImports = ['Injectable'];
   if (hasPathParams) nestCommonImports.push('NotFoundException');
+  if (hasRequiredBodyFields) nestCommonImports.push('BadRequestException');
+  if (hasVendorRoutes) nestCommonImports.push('BadGatewayException');
 
   const allImports = [
     `import { ${nestCommonImports.join(', ')} } from "@nestjs/common";`,
     `import { ${rxjsImports} } from "rxjs";`,
+    ...(hasVendorRoutes ? [`import { catchError } from 'rxjs/operators';`] : []),
     ...dtoImports,
   ];
 

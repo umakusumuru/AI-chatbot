@@ -72,7 +72,7 @@ async function main() {
     });
 
     console.log(
-      `\n✅ Updated ${path.join(
+      ` Updated ${path.join(
         absoluteOutput,
         'generated.module.ts'
       )} with generated feature module imports.`
@@ -81,14 +81,14 @@ async function main() {
     try {
       await agent.formatGeneratedFiles(absoluteOutput, descriptions);
       console.log(
-        '✅ Formatted generated files with Prettier and ESLint (if available).'
+        'Formatted generated files with Prettier and ESLint (if available).'
       );
     } catch (e) {
-      console.warn('⚠️ Formatting step failed or tools not available:', e);
+      console.warn(' Formatting step failed or tools not available:', e);
     }
   } else {
     console.log(
-      '⚠️  No API definition files found. Create .api.json files in src/api-definitions/'
+      '  No API definition files found. Create .api.json files in src/api-definitions/'
     );
     console.log('\nGenerating sample API as fallback...');
     await agent.createAgentApiFiles(agent.sampleApiDescription, absoluteOutput);
@@ -97,7 +97,7 @@ async function main() {
       absoluteOutput
     );
     console.log(
-      `✓ Generated sample API for feature '${agent.sampleApiDescription.featureName}'`
+      `Generated sample API for feature '${agent.sampleApiDescription.featureName}'`
     );
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Observable, of, throwError } from 'rxjs';
 import { CreateTestdataDto } from './dto/CreateTestdataDto.dto';
 
@@ -40,6 +44,18 @@ export class TestService {
   createTestdata(
     body: CreateTestdataDto
   ): Observable<{ id: string; name: string; email: string }> {
+    const missingFields = ['name', 'email'].filter(
+      (key) => !(body as any)?.[key]
+    );
+    if (missingFields.length) {
+      return throwError(
+        () =>
+          new BadRequestException(
+            `Missing required field(s): ${missingFields.join(', ')}`
+          )
+      );
+    }
+
     // Test data - Replace with actual business logic
     return of({
       ...body,
