@@ -1,0 +1,90 @@
+{
+  "featureName": "product",
+  "baseRoute": "product",
+  "moduleClassName": "ProductModule",
+  "controllerClassName": "ProductController",
+  "serviceClassName": "ProductService",
+  "target": "aspnet",
+  "protocol": "rest",
+  "testFramework": "xunit",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAllProducts",
+      "summary": "Fetch all products with optional filters",
+      "responseType": "{ id: string; name: string; price: number; category: string; inStock: boolean }[]"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createProduct",
+      "summary": "Create a new product",
+      "requestDto": {
+        "name": "CreateProductDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": true },
+          { "name": "description", "type": "string", "required": false },
+          { "name": "price", "type": "number", "required": true },
+          { "name": "category", "type": "string", "required": true },
+          { "name": "sku", "type": "string", "required": true },
+          { "name": "stockQuantity", "type": "number", "required": false },
+          { "name": "tags", "type": "string[]", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; price: number; category: string; sku: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getProductById",
+      "summary": "Get a product by ID",
+      "responseType": "{ id: string; name: string; description: string; price: number; category: string; sku: string; stockQuantity: number; inStock: boolean }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateProduct",
+      "summary": "Update an existing product by ID",
+      "requestDto": {
+        "name": "UpdateProductDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": false },
+          { "name": "description", "type": "string", "required": false },
+          { "name": "price", "type": "number", "required": false },
+          { "name": "category", "type": "string", "required": false },
+          { "name": "stockQuantity", "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; price: number; category: string }"
+    },
+    {
+      "method": "patch",
+      "path": ":id/stock",
+      "actionName": "updateStock",
+      "summary": "Update stock quantity for a product",
+      "requestDto": {
+        "name": "UpdateStockDto",
+        "properties": [
+          { "name": "quantity", "type": "number", "required": true },
+          { "name": "reason", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; stockQuantity: number; updatedAt: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteProduct",
+      "summary": "Delete a product by ID",
+      "responseType": "{ message: string }"
+    },
+    {
+      "method": "get",
+      "path": "category/:id",
+      "actionName": "getProductsByCategory",
+      "summary": "Get all products under a specific category",
+      "responseType": "{ id: string; name: string; price: number }[]"
+    }
+  ]
+}

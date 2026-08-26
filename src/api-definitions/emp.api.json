@@ -4,6 +4,8 @@
   "moduleClassName": "EmpModule",
   "controllerClassName": "EmpController",
   "serviceClassName": "EmpService",
+  "target": "nestjs",
+  "protocol": "rest",
   "routes": [
     {
       "method": "get",

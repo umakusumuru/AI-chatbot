@@ -4,7 +4,7 @@
   "moduleClassName": "UserModule",
   "controllerClassName": "UserController",
   "serviceClassName": "UserService",
-  "target": "nestjs",
+  "target": "aspnet",
   "protocol": "rest",
   "routes": [
     {
@@ -28,6 +28,28 @@
         ]
       },
       "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateUser",
+      "summary": "Update a user by ID",
+      "requestDto": {
+        "name": "UpdateUserDto",
+        "properties": [
+          { "name": "name", "type": "string", "required": false },
+          { "name": "email", "type": "string", "required": false },
+          { "name": "age", "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteUser",
+      "summary": "Delete a user by ID",
+      "responseType": "{ message: string }"
     },
     {
       "method": "get",

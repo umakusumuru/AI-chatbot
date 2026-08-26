@@ -1,20 +1,33 @@
 {
-  "name": "ai-chatbot",
+  "name": "api-generator",
   "version": "0.0.1",
-  "description": "AI chatbot backend API",
+  "description": "Technology-independent API generator — generates REST, GraphQL and gRPC APIs for NestJS, Express, Spring Boot, ASP.NET Core, FastAPI and more from a single JSON definition",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "bin": {
+    "api-generator": "dist/src/cli.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/src/main.js",
     "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+
     "generate:api": "ts-node scripts/generate-api.ts",
     "generate:api:geminii": "ts-node scripts/geminii-generate.ts",
     "generate:api:run": "ts-node scripts/generate-build-test.ts",
     "generate:swagger": "ts-node scripts/generate-swagger.ts",
+    "generate:api-tests": "ts-node scripts/generate-api-tests.ts",
+
+    "generate:nestjs": "ts-node src/cli.ts generate --target=nestjs",
+    "generate:express": "ts-node src/cli.ts generate --target=express",
+    "generate:springboot": "ts-node src/cli.ts generate --target=springboot",
+    "generate:aspnet": "ts-node src/cli.ts generate --target=aspnet",
+    "generate:fastapi": "ts-node src/cli.ts generate --target=fastapi",
+    "generate:graphql": "ts-node src/cli.ts generate --protocol=graphql",
+    "generate:grpc": "ts-node src/cli.ts generate --protocol=grpc",
+
     "format": "prettier --write .",
     "lint:fix": "eslint . --ext .ts --fix",
-    "generate:api-tests": "ts-node scripts/generate-api-tests.ts",
     "test": "jest --config jest.config.ts",
     "test:watch": "jest --config jest.config.ts --watch"
   },

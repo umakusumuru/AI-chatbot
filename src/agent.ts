@@ -2,6 +2,45 @@ import { access, mkdir, writeFile, readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { basename, dirname, join } from 'path';
 import { spawnSync } from 'child_process';
+import { createExpressFiles } from './targets/express.generator';
+import { createSpringBootFiles } from './targets/springboot.generator';
+import { createAspNetFiles } from './targets/aspnet.generator';
+import { createFastApiFiles } from './targets/fastapi.generator';
+import { createGraphQLFiles } from './targets/graphql.generator';
+import { createGrpcFiles } from './targets/grpc.generator';
+
+export type TargetFramework =
+  | 'nestjs'
+  | 'express'
+  | 'springboot'
+  | 'aspnet'
+  | 'fastapi'
+  | 'django'
+  | 'laravel'
+  | 'gin';
+
+export type ApiProtocol = 'rest' | 'graphql' | 'grpc';
+
+/**
+ * Test framework to use when generating unit test files.
+ * Each language supports a different set of options — the generator
+ * falls back to the default when an unsupported value is given.
+ *
+ * TypeScript (NestJS / Express / GraphQL / gRPC): jest | vitest
+ * Java (Spring Boot):                             junit5 | testng
+ * C# (ASP.NET Core):                             xunit | nunit | mstest
+ * Python (FastAPI):                              pytest | unittest
+ */
+export type TestFramework =
+  | 'jest'      // TypeScript default
+  | 'vitest'    // TypeScript alternative
+  | 'junit5'    // Java default
+  | 'testng'    // Java alternative
+  | 'xunit'     // C# default
+  | 'nunit'     // C# alternative
+  | 'mstest'    // C# alternative
+  | 'pytest'    // Python default
+  | 'unittest'; // Python alternative
 
 export interface ApiDtoProperty {
   name: string;
@@ -36,6 +75,12 @@ export interface ApiDescription {
   moduleClassName: string;
   controllerClassName: string;
   serviceClassName: string;
+  /** Target framework — defaults to "nestjs" if omitted */
+  target?: TargetFramework;
+  /** API protocol — defaults to "rest" if omitted */
+  protocol?: ApiProtocol;
+  /** Test framework — each language has its own default and supported options */
+  testFramework?: TestFramework;
   routes: ApiRoute[];
 }
 
@@ -793,6 +838,37 @@ export async function createAgentApiFiles(
   description: ApiDescription,
   rootDir: string
 ) {
+  const target = description.target ?? 'nestjs';
+  const protocol = description.protocol ?? 'rest';
+
+  // Route to protocol-specific generators first
+  if (protocol === 'graphql') {
+    await createGraphQLFiles(description, rootDir);
+    return;
+  }
+  if (protocol === 'grpc') {
+    await createGrpcFiles(description, rootDir);
+    return;
+  }
+
+  // Route to framework-specific REST generators
+  switch (target) {
+    case 'express':
+      await createExpressFiles(description, rootDir);
+      return;
+    case 'springboot':
+      await createSpringBootFiles(description, rootDir);
+      return;
+    case 'aspnet':
+      await createAspNetFiles(description, rootDir);
+      return;
+    case 'fastapi':
+      await createFastApiFiles(description, rootDir);
+      return;
+    default:
+      break; // falls through to existing NestJS generation below
+  }
+
   const featureDir = join(rootDir, description.baseRoute);
   const dtoDir = join(featureDir, 'dto');
 

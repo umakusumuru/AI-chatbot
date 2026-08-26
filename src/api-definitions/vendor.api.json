@@ -4,6 +4,8 @@
   "moduleClassName": "VendorModule",
   "controllerClassName": "VendorController",
   "serviceClassName": "VendorService",
+  "target": "nestjs",
+  "protocol": "rest",
   "routes": [
     {
       "method": "post",

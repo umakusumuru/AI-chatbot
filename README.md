@@ -1,72 +1,506 @@
-# AI-chatbot
+# api-generator — Technology-Independent API Generator
 
-A configuration-driven NestJS backend scaffold that generates API modules, controllers, services, and DTOs from JSON definitions.
+Generate production-ready REST, GraphQL, and gRPC APIs for **any framework** from a single JSON definition file.
 
-## Features
+Write your API once in `.api.json` — the generator outputs native code for NestJS, Express, Spring Boot, ASP.NET Core, FastAPI, or generates GraphQL schemas and gRPC `.proto` files. No NestJS packages land in your Java or .NET project. The generator runs at build time and walks away.
 
-- Generate APIs automatically from `src/api-definitions/*.api.json`
-- Auto-create NestJS feature modules, controllers, services, and DTOs
-- **Swagger/OpenAPI documentation** with error scenarios automatically generated
-- Run a full workflow that generates, builds, starts, and tests the application
-- Uses sample test data in generated services for quick verification
+---
 
-## Setup
+## Supported Technologies
 
-Install project dependencies:
+| Target (`--target`) | Language | Protocol |
+|---|---|---|
+| `nestjs` *(default)* | TypeScript | REST |
+| `express` | TypeScript | REST |
+| `springboot` | Java | REST |
+| `aspnet` | C# | REST |
+| `fastapi` | Python | REST |
+| *(any target)* | TypeScript | `graphql` |
+| *(any target)* | Proto + TypeScript | `grpc` |
+
+---
+
+## What Gets Generated
+
+### REST — NestJS (`target: "nestjs"`)
+```
+src/{feature}/
+  {feature}.controller.ts      HTTP route handlers + Swagger decorators
+  {feature}.service.ts         Business logic stub (fill in your logic)
+  {feature}.module.ts          NestJS module wiring
+  dto/{Name}.dto.ts            Validated DTOs (class-validator)
+  {feature}.controller.spec.ts Jest unit tests
+  {feature}.service.spec.ts    Jest unit tests
+```
+
+### REST — ASP.NET Core (`target: "aspnet"`)
+```
+{feature}/
+  Controllers/{Feature}Controller.cs   [ApiController] with Swagger annotations
+  Services/I{Feature}Service.cs        Interface
+  Services/{Feature}Service.cs         Implementation stub
+  DTOs/{Name}.cs                       Data annotations + nullable types
+  Program.cs                           DI wiring + Swagger setup
+  {feature}-api.csproj                 .NET 8 project file
+```
+
+### REST — Spring Boot (`target: "springboot"`)
+```
+{feature}/src/main/java/com/example/{feature}/
+  controller/{Feature}Controller.java  @RestController + SpringDoc annotations
+  service/{Feature}Service.java        @Service stub
+  dto/{Name}.java                      Jakarta validation annotations
+  {Feature}Application.java            @SpringBootApplication entry
+  pom.xml                              Maven dependencies
+```
+
+### REST — FastAPI (`target: "fastapi"`)
+```
+{feature}/
+  {feature}_router.py    APIRouter with response_model typing
+  {feature}_service.py   Service class stub
+  {feature}_schema.py    Pydantic BaseModel classes
+  main.py                FastAPI app entry point
+  requirements.txt       fastapi, uvicorn, pydantic
+```
+
+### REST — Express (`target: "express"`)
+```
+{feature}/
+  {feature}.handler.ts   Route handlers + express-validator
+  {feature}.router.ts    Express Router registration
+  app.ts                 Express app entry point
+  package.json           express, express-validator dependencies
+```
+
+### GraphQL (`protocol: "graphql"`)
+```
+{feature}/
+  {feature}.schema.graphql   Type, Query, Mutation definitions
+  {feature}.resolver.ts      NestJS @Resolver with @Query/@Mutation
+  {feature}.model.ts         @ObjectType class
+```
+
+### gRPC (`protocol: "grpc"`)
+```
+{feature}/
+  {feature}.proto              Protobuf service + message definitions
+  {feature}.grpc.controller.ts NestJS @GrpcMethod controller
+  dto/{feature}.grpc.dto.ts   TypeScript interfaces for request types
+```
+
+---
+
+## Installation
 
 ```bash
 npm install
 ```
 
-## API Generation
+### Install globally (use from any project)
 
-Create or update API definition files in `src/api-definitions/` using the `.api.json` format.
+```bash
+npm run build
+npm install -g .
+```
 
-Example definition file structure:
+Then from any project directory:
+
+```bash
+api-generator generate --file=user.api.json --target=aspnet --output=./MyProject
+```
+
+### Use without installing (npx)
+
+```bash
+npx api-generator generate --file=user.api.json --target=springboot --output=./my-java-app
+```
+
+---
+
+## API Definition Format
+
+Create `.api.json` files in `src/api-definitions/`. All fields are the same regardless of target technology.
 
 ```json
 {
-  "featureName": "chat",
-  "baseRoute": "chat",
-  "moduleClassName": "ChatModule",
-  "controllerClassName": "ChatController",
-  "serviceClassName": "ChatService",
+  "featureName": "user",
+  "baseRoute": "user",
+  "moduleClassName": "UserModule",
+  "controllerClassName": "UserController",
+  "serviceClassName": "UserService",
+  "target": "nestjs",
+  "protocol": "rest",
   "routes": [
     {
       "method": "get",
-      "path": "health",
-      "actionName": "getHealth",
-      "summary": "Returns API health status",
-      "responseType": "{ status: string; message: string }"
+      "path": "",
+      "actionName": "getAllUsers",
+      "summary": "Fetch all users",
+      "responseType": "{ id: string; name: string; email: string }[]"
     },
     {
       "method": "post",
-      "path": "message",
-      "actionName": "sendMessage",
-      "summary": "Sends a chat message and returns a response",
+      "path": "create",
+      "actionName": "createUser",
+      "summary": "Create a new user",
       "requestDto": {
-        "name": "SendMessageDto",
+        "name": "CreateUserDto",
         "properties": [
-          { "name": "message", "type": "string", "required": true },
-          { "name": "sessionId", "type": "string", "required": false }
+          { "name": "name",  "type": "string", "required": true  },
+          { "name": "email", "type": "string", "required": true  },
+          { "name": "age",   "type": "number", "required": false }
         ]
       },
-      "responseType": "{ reply: string }"
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getUserById",
+      "summary": "Get user by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateUser",
+      "summary": "Update user by ID",
+      "requestDto": {
+        "name": "UpdateUserDto",
+        "properties": [
+          { "name": "name",  "type": "string", "required": false },
+          { "name": "email", "type": "string", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteUser",
+      "summary": "Delete user by ID",
+      "responseType": "{ message: string }"
     }
   ]
 }
 ```
 
+### Definition Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `featureName` | string | Yes | Feature name in camelCase (`user`, `empProfile`) |
+| `baseRoute` | string | Yes | URL base path (`user` → `/api/user`) |
+| `moduleClassName` | string | Yes | Must end with `Module` |
+| `controllerClassName` | string | Yes | Must end with `Controller` |
+| `serviceClassName` | string | Yes | Must end with `Service` |
+| `target` | string | No | Framework target (default: `nestjs`) |
+| `protocol` | string | No | API protocol (default: `rest`) |
+| `routes` | array | Yes | Route definitions |
+
+### Route Fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `method` | string | Yes | `get`, `post`, `put`, `delete`, `patch` |
+| `path` | string | Yes | Path segment — use `:id` for path params |
+| `actionName` | string | Yes | Method name in camelCase |
+| `summary` | string | No | Description for Swagger/OpenAPI docs |
+| `requestDto` | object | No | Request body schema (name + properties) |
+| `responseType` | string | No | TypeScript-style return type string |
+| `vendor` | object | No | Proxy to an external API (see Vendor Routes) |
+
+### DTO Property Types
+
+| `type` value | NestJS | Java | C# | Python |
+|---|---|---|---|---|
+| `"string"` | `string` | `String` | `string` | `str` |
+| `"number"` | `number` | `Integer` | `int` | `int` |
+| `"boolean"` | `boolean` | `Boolean` | `bool` | `bool` |
+| `"string[]"` | `string[]` | `List<String>` | `List<string>` | `List[str]` |
+| nested `properties` | nested class | nested class | nested class | nested BaseModel |
+
+---
+
+## Generate Commands
+
+### NestJS (TypeScript) — Default
+
+```bash
+npm run generate:nestjs
+```
+
+With a specific file:
+
+```bash
+npm run generate:nestjs -- --file=user.api.json
+```
+
+### Express (TypeScript)
+
+```bash
+npm run generate:express -- --file=user.api.json --output=./my-express-app
+```
+
+### Spring Boot (Java)
+
+```bash
+npm run generate:springboot -- --file=user.api.json --output=./my-java-project
+```
+
+### ASP.NET Core (C#)
+
+```bash
+npm run generate:aspnet -- --file=user.api.json --output=./MyDotNetProject
+```
+
+### FastAPI (Python)
+
+```bash
+npm run generate:fastapi -- --file=user.api.json --output=./my-python-project
+```
+
+### GraphQL
+
+```bash
+npm run generate:graphql -- --file=user.api.json --output=./src
+```
+
+### gRPC
+
+```bash
+npm run generate:grpc -- --file=user.api.json --output=./src
+```
+
+### All definitions in a directory
+
+```bash
+# Generate all .api.json files in src/api-definitions/ for a target
+npm run generate:aspnet -- --definitions=./src/api-definitions --output=./MyProject
+```
+
+---
+
+## CLI Reference
+
+```bash
+api-generator generate [options]
+```
+
+| Option | Description | Default |
+|---|---|---|
+| `--file=<path>` | Single `.api.json` file to generate from | — |
+| `--definitions=<path>` | Directory of `.api.json` files | `src/api-definitions` |
+| `--output=<path>` | Output directory for generated files | `src` |
+| `--target=<framework>` | Override target framework | from definition |
+| `--protocol=<protocol>` | Override API protocol | from definition |
+| `--help` | Show help message | — |
+
+### CLI Examples
+
+```bash
+# NestJS REST (default)
+api-generator generate --file=user.api.json
+
+# ASP.NET Core — output into an existing .NET project folder
+api-generator generate --file=user.api.json --target=aspnet --output=./MyProject
+
+# Spring Boot — output into a Java project folder
+api-generator generate --file=user.api.json --target=springboot --output=./my-java-app
+
+# FastAPI — output into a Python project folder
+api-generator generate --file=user.api.json --target=fastapi --output=./my-python-app
+
+# Express.js TypeScript
+api-generator generate --file=user.api.json --target=express --output=./my-express-app
+
+# GraphQL schema + NestJS resolver
+api-generator generate --file=user.api.json --protocol=graphql --output=./src
+
+# gRPC .proto + NestJS gRPC controller
+api-generator generate --file=user.api.json --protocol=grpc --output=./src
+
+# Generate ALL definitions for Spring Boot
+api-generator generate --definitions=./api-defs --target=springboot --output=./my-java-app
+```
+
+---
+
+## NestJS-Specific Commands
+
+These commands are for the NestJS runtime server that ships with this project.
+
+### Generate NestJS APIs only
+
+```bash
+npm run generate:api
+```
+
+Single file:
+
+```bash
+npm run generate:api -- --file=chat.api.json
+```
+
+By feature name:
+
+```bash
+npm run generate:api -- --api=emp
+```
+
+### Full workflow — Generate, Build, Test, Start, Smoke-test
+
+```bash
+npm run generate:api:run
+```
+
+This command runs in sequence:
+
+1. Validates all `.api.json` files — reports errors before writing any code
+2. Generates NestJS modules, controllers, services, and DTOs
+3. Generates Jest unit tests
+4. Builds TypeScript
+5. Runs Jest unit tests (must pass before continuing)
+6. Starts the server on `http://localhost:4000/api`
+7. Smoke-tests every generated endpoint
+
+Single feature:
+
+```bash
+npm run generate:api:run -- --file=chat.api.json
+npm run generate:api:run -- --api=chat
+```
+
+Custom paths:
+
+```bash
+npm run generate:api:run -- --definitions=./src/api-definitions --output=./src
+```
+
+### Generate unit tests only (without regenerating source files)
+
+Use this when you have modified service or controller logic manually and do not want to overwrite it.
+
+```bash
+npm run generate:api-tests
+```
+
+Single file:
+
+```bash
+npm run generate:api-tests -- --file=chat.api.json
+```
+
+By source file:
+
+```bash
+npm run generate:api-tests -- src/chat/chat.controller.ts
+npm run generate:api-tests -- src/chat/chat.service.ts
+npm run generate:api-tests -- src/chat
+```
+
+By feature name:
+
+```bash
+npm run generate:api-tests -- --api=chat
+```
+
+---
+
+## AI-Driven Generation (OpenAI)
+
+Instead of templates, use GPT-4o-mini to generate NestJS code from your definitions.
+
+**Set your API key:**
+
+```bash
+# Windows CMD
+set OPENAI_API_KEY=your_key_here
+
+# Windows PowerShell
+$env:OPENAI_API_KEY="your_key_here"
+
+# macOS / Linux
+export OPENAI_API_KEY=your_key_here
+```
+
+**Generate with AI:**
+
+```bash
+npm run generate:api:geminii
+```
+
+**Full workflow with AI:**
+
+```bash
+set USE_GEMINII=true
+npm run generate:api:run
+```
+
+| Method | Pros | Cons |
+|---|---|---|
+| Template (default) | Fast, consistent, no API key | Fixed templates |
+| AI-driven | Handles complex descriptions, flexible | Requires API key, results may vary |
+
+---
+
+## Start the NestJS Server
+
+Development (hot reload):
+
+```bash
+npm run start:dev
+```
+
+Production:
+
+```bash
+npm run build
+npm start
+```
+
+Swagger UI is available at:
+
+```
+http://localhost:3000/api-docs
+```
+
+---
+
+## Unit Tests
+
+Generated APIs include Jest unit tests for all controllers and services.
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Single feature
+npx jest src/chat
+npx jest src/user/user.service.spec.ts
+```
+
+Tests validate:
+- All routes return defined responses
+- Required fields throw `400 Bad Request` when missing
+- Path-param routes throw `404 Not Found` for invalid IDs
+
+---
+
 ## API Definition Validation
 
-Before generating any code, `generate:api:run` validates every `.api.json` file and reports all errors up front:
+The generator validates every `.api.json` before writing any code. Errors reported include:
 
-- Missing or wrong-type required fields (`featureName`, `baseRoute`, `moduleClassName`, etc.)
-- `moduleClassName` not ending with `Module`, `controllerClassName` not ending with `Controller`, etc.
-- Invalid HTTP method (must be one of `get`, `post`, `put`, `delete`, `patch`)
-- Missing `actionName` or duplicate action names within the same file
+- Missing required fields (`featureName`, `baseRoute`, `moduleClassName`, etc.)
+- Class names not following conventions (`Module`, `Controller`, `Service` suffixes)
+- Invalid HTTP method (must be `get`, `post`, `put`, `delete`, `patch`)
+- Missing or duplicate `actionName` within a file
 - Malformed `requestDto` properties (missing `name` or `type`)
-- Malformed `vendor` block (missing `url`, wrong `headers` type, invalid `method`)
+- Malformed `vendor` block (missing `url`, wrong `headers` type)
 - Invalid JSON syntax
 
 Example error output:
@@ -75,111 +509,150 @@ Example error output:
 ❌ API definition validation failed:
 
   chat.api.json
-    • chat.api.json → routes[1].method: must be one of [get, post, put, delete, patch], got "fetch"
-    • chat.api.json → routes[1].requestDto.properties[0].type: required non-empty string, got undefined
+    • routes[1].method: must be one of [get, post, put, delete, patch], got "fetch"
+    • routes[1].requestDto.properties[0].type: required non-empty string, got undefined
 ```
 
-The command exits immediately so no files are generated or overwritten until all definitions are clean.
+The command exits immediately — no files are generated until all definitions are clean.
 
-## Generate APIs
+---
 
-Run the API generation script:
+## Sample Definition Files
+
+Ready-to-use sample definitions are in `src/api-definitions/`. Each one targets a different technology but describes the same User CRUD API.
+
+| File | Target | Protocol | Use this to generate |
+|---|---|---|---|
+| [`user.api.json`](src/api-definitions/user.api.json) | `nestjs` | `rest` | NestJS controller + service + DTOs |
+| [`user-express.api.json`](src/api-definitions/user-express.api.json) | `express` | `rest` | Express Router + handlers + DTOs |
+| [`user-springboot.api.json`](src/api-definitions/user-springboot.api.json) | `springboot` | `rest` | Spring Boot controller + service + Maven |
+| [`user-aspnet.api.json`](src/api-definitions/user-aspnet.api.json) | `aspnet` | `rest` | ASP.NET Core controller + service + C# DTOs |
+| [`user-fastapi.api.json`](src/api-definitions/user-fastapi.api.json) | `fastapi` | `rest` | FastAPI router + Pydantic models + requirements |
+| [`user-graphql.api.json`](src/api-definitions/user-graphql.api.json) | `nestjs` | `graphql` | GraphQL schema + NestJS resolver + ObjectType |
+| [`user-grpc.api.json`](src/api-definitions/user-grpc.api.json) | `nestjs` | `grpc` | `.proto` file + NestJS gRPC controller |
+
+### Key difference between files — only `target` and `protocol` change
+
+```json
+// user.api.json          → NestJS REST
+{ "target": "nestjs",     "protocol": "rest" }
+
+// user-express.api.json  → Express.js REST
+{ "target": "express",    "protocol": "rest" }
+
+// user-springboot.api.json → Spring Boot REST
+{ "target": "springboot", "protocol": "rest" }
+
+// user-aspnet.api.json   → ASP.NET Core REST
+{ "target": "aspnet",     "protocol": "rest" }
+
+// user-fastapi.api.json  → FastAPI REST
+{ "target": "fastapi",    "protocol": "rest" }
+
+// user-graphql.api.json  → GraphQL
+{ "target": "nestjs",     "protocol": "graphql" }
+
+// user-grpc.api.json     → gRPC
+{ "target": "nestjs",     "protocol": "grpc" }
+```
+
+Routes, DTOs, and field definitions are identical across all files — only the target changes.
+
+### Try them
 
 ```bash
-npm run generate:api
+# Generate the Express sample
+npm run generate:express -- --file=src/api-definitions/user-express.api.json --output=./generated
+
+# Generate the Spring Boot sample
+npm run generate:springboot -- --file=src/api-definitions/user-springboot.api.json --output=./generated
+
+# Generate the ASP.NET Core sample
+npm run generate:aspnet -- --file=src/api-definitions/user-aspnet.api.json --output=./generated
+
+# Generate the FastAPI sample
+npm run generate:fastapi -- --file=src/api-definitions/user-fastapi.api.json --output=./generated
+
+# Generate the GraphQL sample
+npm run generate:graphql -- --file=src/api-definitions/user-graphql.api.json --output=./generated
+
+# Generate the gRPC sample
+npm run generate:grpc -- --file=src/api-definitions/user-grpc.api.json --output=./generated
 ```
 
-This will scan `src/api-definitions/`, create feature folders, and generate the NestJS files.
+---
 
-Generate a single API definition file instead of all definitions:
+## Vendor / Proxy Routes
 
-```bash
-npm run generate:api -- --file=chat.api.json
+Call external APIs directly from generated routes by adding a `vendor` block.
+
+```json
+{
+  "method": "post",
+  "path": "translate",
+  "actionName": "translateText",
+  "summary": "Proxy to translation vendor",
+  "requestDto": {
+    "name": "TranslateDto",
+    "properties": [
+      { "name": "text", "type": "string", "required": true },
+      { "name": "lang", "type": "string", "required": false }
+    ]
+  },
+  "responseType": "any",
+  "vendor": {
+    "url": "https://api.vendor.com/v1/translate",
+    "method": "post",
+    "headers": {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer {{body.apiKey}}"
+    },
+    "mapRequest": {
+      "text": "{{body.text}}",
+      "lang": "{{body.lang}}"
+    },
+    "mapResponse": {
+      "translated": "{{vendorResponse.translatedText}}"
+    }
+  }
+}
 ```
 
-Or use the feature name directly:
+- `{{body.fieldName}}` — substitutes request body values into URL, headers, or request body
+- `mapRequest` — reshapes the outgoing request to the vendor format
+- `mapResponse` — reshapes the vendor response before returning it to the caller
+- Set `VENDOR_MOCK=true` to bypass real HTTP calls during testing
 
-```bash
-npm run generate:api -- --api=emp
-```
-
-## Generate or Update Unit Tests Only
-
-If you modify controller or service logic manually, do not rerun full API generation. Full generation can overwrite your code.
-
-Run:
-
-```bash
-npm run generate:api-tests
-```
-
-For a single API definition file:
-
-```bash
-npm run generate:api-tests -- --file=chat.api.json
-```
-
-For a direct path to a definition file:
-
-```bash
-npm run generate:api-tests -- src/api-definitions/chat.api.json
-```
-
-For a controller or service source file:
-
-```bash
-npm run generate:api-tests -- src/chat/chat.controller.ts
-npm run generate:api-tests -- src/chat/chat.service.ts
-```
-
-For a folder of controller/service files:
-
-```bash
-npm run generate:api-tests -- src/chat
-```
-
-For a directory path and all API definitions in it:
-
-```bash
-npm run generate:api-tests -- src/api-definitions
-```
-
-Or use the feature name directly:
-
-```bash
-npm run generate:api-tests -- --api=chat
-```
+---
 
 ## Use as a Package in Another Project
 
-If you install this repo as a dependency in another project, the package exports the generator API from `src/index.ts`.
-
-### Recommended setup in the consuming project
-
-- Place API `.api.json` files under:
+Install as a dev dependency:
 
 ```bash
-<project-root>/src/api-definitions/
+npm install --save-dev api-generator
 ```
 
-- Install the package and run generation from the consuming project:
+Place `.api.json` definitions in your project:
+
+```
+<your-project>/src/api-definitions/user.api.json
+```
+
+Run generation:
 
 ```bash
-npm install <your-package-name>
-npm run generate:api -- --definitions=./src/api-definitions --output=./src
+# NestJS
+npx api-generator generate --definitions=./src/api-definitions --output=./src
+
+# ASP.NET Core
+npx api-generator generate --definitions=./src/api-definitions --target=aspnet --output=./Controllers
+
+# Spring Boot
+npx api-generator generate --definitions=./src/api-definitions --target=springboot --output=./src/main/java
 ```
 
-### Custom definitions path
-
-If you want definitions in a different folder, pass `--definitions`:
-
-```bash
-npm run generate:api -- --definitions=./my-api-definitions --output=./src
-```
-
-### Programmatic use
-
-Import the generator functions from the package:
+### Programmatic API
 
 ```ts
 import {
@@ -187,331 +660,181 @@ import {
   generateApisFromDirectory,
   createAgentApiFiles,
   writeGeneratedModuleFile,
-} from 'ai-chatbot';
+  TargetFramework,
+  ApiProtocol,
+} from 'api-generator';
+
+// Generate one file with target override
+const description = await generateApiFromFile('./user.api.json', './src');
+
+// Patch target at runtime
+description.target = 'aspnet';
+await createAgentApiFiles(description, './MyProject');
+
+// Generate all definitions in a directory
+await generateApisFromDirectory('./src/api-definitions', './src');
 ```
 
-Then call them from your own script.
+---
 
-Specify the output path and definitions path when generating from another repo or from a different directory layout:
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `PORT` | Server listen port | `3000` |
+| `OPENAI_API_KEY` | Required for AI-driven generation | — |
+| `USE_GEMINII` | Set `true` to enable OpenAI generation | `false` |
+| `VENDOR_MOCK` | Set `true` to bypass vendor HTTP calls | `false` |
+
+---
+
+## Code Formatting
 
 ```bash
-npm run generate:api -- --definitions=./src/api-definitions --output=./generated-api
+npm run format      # Prettier
+npm run lint:fix    # ESLint auto-fix
 ```
 
-This will generate files into `./generated-api` and read definitions from `./src/api-definitions`.
+When Prettier and ESLint are installed locally, generation automatically formats and lints generated files.
 
-If you install this generator as a package in another project, place your `.api.json` definitions in that project under:
+---
 
-```bash
-<project-root>/src/api-definitions/
+## Project Structure
+
+```
+src/
+  agent.ts                    Core generation engine + exported types
+  cli.ts                      CLI entrypoint (api-generator command)
+  geminii.ts                  OpenAI GPT-4o-mini integration
+  main.ts                     NestJS server bootstrap
+  targets/
+    express.generator.ts      Express.js generator
+    springboot.generator.ts   Spring Boot generator
+    aspnet.generator.ts       ASP.NET Core generator
+    fastapi.generator.ts      FastAPI generator
+    graphql.generator.ts      GraphQL schema + resolver generator
+    grpc.generator.ts         gRPC .proto + controller generator
+  api-definitions/
+    chat.api.json             Chat — NestJS REST (live module)
+    user.api.json             User — NestJS REST (live module)
+    emp.api.json              Employee — NestJS REST (live module)
+    vendor.api.json           Vendor proxy — NestJS REST (live module)
+    test.api.json             Test — NestJS REST (live module)
+    user-express.api.json     User — Express.js sample
+    user-springboot.api.json  User — Spring Boot (Java) sample
+    user-aspnet.api.json      User — ASP.NET Core (C#) sample
+    user-fastapi.api.json     User — FastAPI (Python) sample
+    user-graphql.api.json     User — GraphQL schema + resolver sample
+    user-grpc.api.json        User — gRPC .proto + service sample
+  chat/                       Generated NestJS chat module
+  user/                       Generated NestJS user module
+  emp/                        Generated NestJS employee module
+  vendor/                     Generated NestJS vendor proxy module
+  filters/
+    http-exception.filter.ts  Global exception handler
+scripts/
+  generate-api.ts             Generate APIs from definitions
+  generate-build-test.ts      Full workflow script
+  generate-api-tests.ts       Regenerate test files only
+  generate-swagger.ts         Export Swagger JSON
 ```
 
-Or use a custom definitions folder by passing `--definitions`:
+---
 
-```bash
-npm run generate:api -- --definitions=./my-api-definitions --output=./generated-api
+## All npm Scripts
+
+| Script | Description |
+|---|---|
+| `npm run generate:api` | Generate NestJS APIs from all definitions |
+| `npm run generate:api:run` | Full workflow: validate → generate → build → test → start → smoke-test |
+| `npm run generate:api:geminii` | AI-driven NestJS generation (requires `OPENAI_API_KEY`) |
+| `npm run generate:api-tests` | Regenerate unit tests only (safe when source is modified) |
+| `npm run generate:nestjs` | Generate NestJS via CLI |
+| `npm run generate:express` | Generate Express.js TypeScript via CLI |
+| `npm run generate:springboot` | Generate Spring Boot Java via CLI |
+| `npm run generate:aspnet` | Generate ASP.NET Core C# via CLI |
+| `npm run generate:fastapi` | Generate FastAPI Python via CLI |
+| `npm run generate:graphql` | Generate GraphQL schema + resolver via CLI |
+| `npm run generate:grpc` | Generate gRPC .proto + service via CLI |
+| `npm run generate:swagger` | Export Swagger JSON to file |
+| `npm run build` | Compile TypeScript to `dist/` |
+| `npm start` | Start production server |
+| `npm run start:dev` | Start development server with hot reload |
+| `npm test` | Run all Jest unit tests |
+| `npm run test:watch` | Run Jest in watch mode |
+| `npm run format` | Format all files with Prettier |
+| `npm run lint:fix` | Fix ESLint issues automatically |
+
+---
+
+## Swagger / API Documentation Per Technology
+
+Every generated REST target ships with API documentation out of the box.
+
+| Technology | Library | Swagger URL | OpenAPI JSON |
+|---|---|---|---|
+| **NestJS** | `@nestjs/swagger` + `swagger-ui-express` | `/api-docs` | `/api-json` |
+| **Express** | `swagger-ui-express` (spec generated at build time) | `/api-docs` | `/api-docs.json` |
+| **Spring Boot** | `springdoc-openapi-starter-webmvc-ui` | `/swagger-ui.html` | `/v3/api-docs` |
+| **ASP.NET Core** | `Swashbuckle.AspNetCore` + Annotations | `/swagger` | `/swagger/v1/swagger.json` |
+| **FastAPI** | Built-in (no extra package needed) | `/docs` and `/redoc` | `/openapi.json` |
+| **GraphQL** | GraphQL Playground (introspection) | `/graphql` | SDL schema file |
+| **gRPC** | `.proto` file is the contract | `grpcui` tool | `.proto` file |
+
+### How Swagger is set up per technology
+
+**NestJS** — decorators generated on every route:
+```ts
+@ApiOperation({ summary: 'Create a new user' })
+@ApiResponse({ status: 200, description: 'Successful response.' })
+@ApiBadRequestResponse({ description: 'Invalid request.' })
+@ApiBody({ type: CreateUserDto })
 ```
 
-For a single API file and a custom output folder:
+**Express** — full OpenAPI 3.0 spec generated at build time into `swagger.ts`, served via `swagger-ui-express`:
+```ts
+// swagger.ts — auto-generated, contains complete OpenAPI spec
+export const swaggerSpec = { openapi: '3.0.3', info: { ... }, paths: { ... }, components: { ... } };
 
-```bash
-npm run generate:api -- --file=chat.api.json --definitions=./src/api-definitions --output=./generated-api
+// app.ts
+app.use('/api-docs', swaggerRouter);        // Swagger UI
+app.get('/api-docs.json', (_req, res) => res.json(swaggerSpec)); // Raw JSON
 ```
 
-This will generate only `chat.api.json` and update `./generated-api/generated.module.ts`.
+**Spring Boot** — annotations on every controller method:
+```java
+@Operation(summary = "Create a new user")
+@ApiResponse(responseCode = "200", description = "Successful response")
+@Tag(name = "user", description = "user API")
+```
+`springdoc-openapi` reads these at startup and serves Swagger UI automatically.
 
-### Gemini/OpenAI-driven generation
+**ASP.NET Core** — Swashbuckle annotations + `Program.cs` wiring:
+```csharp
+[SwaggerOperation(Summary = "Create a new user")]
+[ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
 
-Use Gemini-style generation with OpenAI by setting your API key and running:
-
-```bash
-set OPENAI_API_KEY=your_key_here
-npm run generate:api:geminii
+// Program.cs
+builder.Services.AddSwaggerGen(c => c.EnableAnnotations());
+app.UseSwagger();
+app.UseSwaggerUI();
 ```
 
-This command reads API definitions from `src/api-definitions/` and uses `openai` to generate NestJS feature modules, controllers, services, and DTO files.
-
-## Build, Run, and Test
-
-To generate APIs with automatic unit test cases, build the project, validate tests, start the app, and test endpoints in one command:
-
-```bash
-npm run generate:api:run
+**FastAPI** — zero setup; FastAPI reads Pydantic models and route decorators automatically:
+```python
+@router.post("/create", response_model=UserResponse, summary="Create a new user")
+async def create_user(body: CreateUserDto):
+    ...
+# Swagger UI at /docs and ReDoc at /redoc are live immediately
 ```
 
-This command automatically:
-
-1. **Validates** all `.api.json` definition files — reports field-level errors before any code is written
-2. Generates API modules, controllers, and services
-3. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
-4. Builds the TypeScript project
-5. **Runs Jest unit tests** (must pass before continuing; scoped to the targeted feature when `--file` or `--api` is used)
-6. Starts the built server on `http://localhost:4000/api`
-7. Validates generated API endpoints
-
-When Prettier and ESLint are installed locally, generated files are also formatted and linted automatically during generation.
-
-If any unit tests fail, the command stops and reports errors without starting the server.
-
-> Note: if you have manually modified controller or service source code, use `npm run generate:api-tests` to regenerate only the unit test files. This avoids overwriting your custom logic.
-
-### Individual Command Options
-
-Run the full workflow for a single API definition:
-
-```bash
-npm run generate:api:run -- --file=chat.api.json
-```
-
-When `--file` or `--api` is provided, Jest runs **only the spec files for that feature** (e.g. `src/chat/*.spec.ts`). Other features such as `user` or `vendor` are not tested. Without a flag, the full test suite runs.
-
-Or use the feature name directly:
-
-```bash
-npm run generate:api:run -- --api=chat
-```
-
-Specify paths for custom layouts:
-
-
-```bash
-npm run generate:api:run -- --definitions=./src/api-definitions --output=./generated-api
-```
-
-For a single API definition with custom paths:
-
-```bash
-npm run generate:api:run -- --file=chat.api.json --definitions=./src/api-definitions --output=./src/api
-```
-
-By default, this uses script-based generation. To use AI-driven generation with OpenAI:
-
-```bash
-set OPENAI_API_KEY=your_key_here
-set USE_GEMINII=true
-npm run generate:api:run
-```
-
-### Just Generate APIs (Without Tests/Build)
-
-If you only want to generate API files without building or testing:
-
-```bash
-npm run generate:api
-```
-
-### ESLint / Prettier
-
-This project supports ESLint and Prettier for generated files.
-
-Install the dev dependencies first:
-
-```bash
-npm install --save-dev prettier eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-```
-
-Then run formatting and linting manually:
-
-```bash
-npm run format
-npm run lint:fix
-```
-
-When these tools are installed locally, generation will also attempt to format and lint generated files automatically.
-
-## Testing Both Generation Methods
-
-You can test the API generation using either script-based or AI-driven methods. Both approaches generate the same structure but use different generation logic.
-
-### Option 1: Script-Based Generation (Default)
-
-This uses template-based code generation for consistent, predictable results:
-
-```bash
-# Generate APIs using scripts
-npm run generate:api
-
-# Or run the full workflow (generate, build, run, test)
-npm run generate:api:run
-```
-
-### Option 2: AI-Driven Generation (OpenAI)
-
-This uses OpenAI's GPT model to generate more creative or complex code based on your API descriptions:
-
-```bash
-# Set your OpenAI API key
-set OPENAI_API_KEY=<YOUR_OPENAI_API_KEY_HERE>
-
-
-$env:OPENAI_API_KEY="<YOUR_OPENAI_API_KEY_HERE>"
-npm run generate:api:geminii
-
-
-# Generate APIs using AI
-npm run generate:api:geminii
-
-# Or run the full workflow with AI generation
-set USE_GEMINII=true
-npm run generate:api:run
-```
-
-### Comparison
-
-| Method       | Pros                                      | Cons                               |
-| ------------ | ----------------------------------------- | ---------------------------------- |
-| Script-Based | Fast, consistent, no API key needed       | Limited to predefined templates    |
-| AI-Driven    | Creative, handles complex logic, flexible | Requires API key, may vary results |
-
-Both methods produce fully functional NestJS APIs with Observables, automatic module registration, and test endpoints.
-
-Start development server:
-
-```bash
-npm run start:dev
-```
-
-Start production build:
-
-```bash
-npm run build
-npm start
-```
-
-## Unit Testing
-
-Generated APIs include automatic Jest unit tests for controllers and services. Tests validate:
-
-- Basic operation of all routes
-- Bad request errors for missing required fields
-- Not found errors for routes with path parameters
-
-### Run all tests
-
-```bash
-npm test
-```
-
-### Run tests in watch mode
-
-```bash
-npm run test:watch
-```
-
-### Run tests for a specific API
-
-```bash
-npx jest src/chat/chat.service.spec.ts
-npx jest src/chat/chat.controller.spec.ts
-```
-
-Unit tests are generated automatically in each feature directory:
-
-- `src/{feature}/{feature}.service.spec.ts`
-- `src/{feature}/{feature}.controller.spec.ts`
-
-When you run `npm run generate:api:run`, Jest tests are executed and must pass before the server starts.
+---
 
 ## Notes
 
-- Add new API definitions in `src/api-definitions/`.
-- Run `npm run generate:api` or `npm run generate:api:run` to regenerate APIs.
-- `src/generated.module.ts` is automatically updated with generated feature modules.
-- Generated services return placeholder sample data; replace with real business logic as needed.
-
-## Vendor / Third-Party Proxy Routes
-
-You can call external/vendor APIs directly from generated routes by adding a `vendor` block to a route in your `.api.json` file. Example (see `src/api-definitions/vendor.api.json`):
-
-```json
-"vendor": {
-  "url": "https://api.vendor.com/v1/translate",
-  "method": "post",
-  "headers": { "Content-Type": "application/json", "Authorization": "Bearer {{body.apiKey}}" },
-  "mapRequest": { "text": "{{body.text}}", "lang": "{{body.lang}}" },
-  "mapResponse": { "translated": "{{vendorResponse.translatedText}}" }
-}
-```
-
-Notes:
-
-- The generator will emit code that templates `url`, `headers`, and `mapRequest` using `{{...}}` placeholders.
-- `mapResponse` (optional) lets you reshape the vendor response before returning it from your API.
-- The generated services use the global `fetch` API; on Node versions older than v18, install a fetch polyfill such as `node-fetch`.
-
-
-Commands
-
-1) Run the API generation script:
-
-npm run generate:api
-
-npm run generate:api -- --file=chat.api.json
-
-		Or use the feature name directly:
-
-npm run generate:api:run -- --api=emp
-
-
-
-2) If you have modified any code , pls run below command for spec file update
-
-npm run generate:api-tests
-
-		For a single API definition file:
-
-npm run generate:api-tests -- --file=chat.api.json
-
-		For a direct path to a definition file:
-
-
-npm run generate:api-tests -- src/api-definitions/chat.api.json
-
-
-npm run generate:api-tests -- src/chat/chat.controller.ts
-npm run generate:api-tests -- src/chat/chat.service.ts
-
-
-
-3) consuming this project in another , then you can run below command with path
-
-npm run generate:api -- --definitions=./src/api-definitions --output=./src
-
-		To generate APIs with automatic unit test cases, build the project, validate tests, start the app, and test endpoints in one command:
-
-npm run generate:api:run
-npm run generate:api:run -- --api=chat
-```
-
-This command automatically:
-
-1. **Validates** all `.api.json` definition files — reports field-level errors before any code is written
-2. Generates API modules, controllers, and services
-3. Generates Jest unit test files (`.controller.spec.ts` and `.service.spec.ts`)
-4. Builds the TypeScript project
-5. **Runs Jest unit tests** (must pass before continuing; scoped to the targeted feature when `--file` or `--api` is used)
-6. Starts the built server on `http://localhost:4000/api`
-7. Validates generated API endpoints
-
-
-------AI-----
-
-
-set OPENAI_API_KEY=<YOUR_OPENAI_API_KEY_HERE>
-
-
-$env:OPENAI_API_KEY="<YOUR_OPENAI_API_KEY_HERE>"
-npm run generate:api:geminii
-
-
-# Generate APIs using AI
-npm run generate:api:geminii
-
-# Or run the full workflow with AI generation
-set USE_GEMINII=true
-npm run generate:api:run
-
-
-
-
-
+- Generated services contain stub logic — replace with real business logic.
+- `src/generated.module.ts` is updated automatically on every NestJS generation run.
+- For NestJS generation, `--file` or `--api` scopes Jest runs to that feature only.
+- The `target` and `protocol` fields in `.api.json` are overridden by `--target` and `--protocol` CLI flags.
+- For non-NestJS targets, only the generated source files are written — no `generated.module.ts` update occurs.

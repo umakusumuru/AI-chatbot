@@ -1,0 +1,62 @@
+{
+  "featureName": "user",
+  "baseRoute": "user",
+  "moduleClassName": "UserModule",
+  "controllerClassName": "UserGrpcController",
+  "serviceClassName": "UserService",
+  "target": "nestjs",
+  "protocol": "grpc",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAllUsers",
+      "summary": "RPC: fetch all users (returns UserList)",
+      "responseType": "{ id: string; name: string; email: string }[]"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getUserById",
+      "summary": "RPC: get user by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createUser",
+      "summary": "RPC: create a new user",
+      "requestDto": {
+        "name": "CreateUserRequest",
+        "properties": [
+          { "name": "name",  "type": "string", "required": true  },
+          { "name": "email", "type": "string", "required": true  },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateUser",
+      "summary": "RPC: update user by ID",
+      "requestDto": {
+        "name": "UpdateUserRequest",
+        "properties": [
+          { "name": "name",  "type": "string", "required": false },
+          { "name": "email", "type": "string", "required": false },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteUser",
+      "summary": "RPC: delete user by ID",
+      "responseType": "{ id: string; deleted: boolean }"
+    }
+  ]
+}

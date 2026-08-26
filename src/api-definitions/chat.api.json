@@ -4,6 +4,8 @@
   "moduleClassName": "ChatModule",
   "controllerClassName": "ChatController",
   "serviceClassName": "ChatService",
+  "target": "nestjs",
+  "protocol": "rest",
   "routes": [
     {
       "method": "get",

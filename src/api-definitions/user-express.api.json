@@ -1,0 +1,62 @@
+{
+  "featureName": "user",
+  "baseRoute": "user",
+  "moduleClassName": "UserModule",
+  "controllerClassName": "UserController",
+  "serviceClassName": "UserService",
+  "target": "express",
+  "protocol": "rest",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAllUsers",
+      "summary": "Fetch all users",
+      "responseType": "{ id: string; name: string; email: string }[]"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createUser",
+      "summary": "Create a new user",
+      "requestDto": {
+        "name": "CreateUserDto",
+        "properties": [
+          { "name": "name",  "type": "string", "required": true  },
+          { "name": "email", "type": "string", "required": true  },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getUserById",
+      "summary": "Get user by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateUser",
+      "summary": "Update user by ID",
+      "requestDto": {
+        "name": "UpdateUserDto",
+        "properties": [
+          { "name": "name",  "type": "string", "required": false },
+          { "name": "email", "type": "string", "required": false },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteUser",
+      "summary": "Delete user by ID",
+      "responseType": "{ message: string }"
+    }
+  ]
+}

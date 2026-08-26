@@ -4,6 +4,8 @@
   "moduleClassName": "TestModule",
   "controllerClassName": "TestController",
   "serviceClassName": "TestService",
+  "target": "nestjs",
+  "protocol": "rest",
   "routes": [
     {
       "method": "get",

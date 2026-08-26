@@ -1,0 +1,62 @@
+{
+  "featureName": "user",
+  "baseRoute": "user",
+  "moduleClassName": "UserModule",
+  "controllerClassName": "UserResolver",
+  "serviceClassName": "UserService",
+  "target": "nestjs",
+  "protocol": "graphql",
+  "routes": [
+    {
+      "method": "get",
+      "path": "",
+      "actionName": "getAllUsers",
+      "summary": "Query: fetch all users",
+      "responseType": "{ id: string; name: string; email: string }[]"
+    },
+    {
+      "method": "get",
+      "path": ":id",
+      "actionName": "getUserById",
+      "summary": "Query: get user by ID",
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "post",
+      "path": "create",
+      "actionName": "createUser",
+      "summary": "Mutation: create a new user",
+      "requestDto": {
+        "name": "CreateUserInput",
+        "properties": [
+          { "name": "name",  "type": "string", "required": true  },
+          { "name": "email", "type": "string", "required": true  },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "put",
+      "path": ":id",
+      "actionName": "updateUser",
+      "summary": "Mutation: update user by ID",
+      "requestDto": {
+        "name": "UpdateUserInput",
+        "properties": [
+          { "name": "name",  "type": "string", "required": false },
+          { "name": "email", "type": "string", "required": false },
+          { "name": "age",   "type": "number", "required": false }
+        ]
+      },
+      "responseType": "{ id: string; name: string; email: string }"
+    },
+    {
+      "method": "delete",
+      "path": ":id",
+      "actionName": "deleteUser",
+      "summary": "Mutation: delete user by ID",
+      "responseType": "{ id: string; deleted: boolean }"
+    }
+  ]
+}
