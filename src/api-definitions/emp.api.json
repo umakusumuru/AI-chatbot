@@ -6,6 +6,14 @@
   "serviceClassName": "EmpService",
   "target": "nestjs",
   "protocol": "rest",
+  "outputMode": "path",
+  "outputPaths": {
+    "controller": "src/api/v1/controllers",
+    "service": "src/core/services",
+    "module": "src/modules",
+    "dto": "src/shared/dto",
+    "spec": "tests/unit"
+  },
   "routes": [
     {
       "method": "get",

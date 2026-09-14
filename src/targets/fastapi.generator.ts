@@ -1,10 +1,7 @@
-import { mkdir, writeFile } from 'fs/promises';
-import { dirname, join } from 'path';
+import { mkdir, writeFile, readFile, access } from 'fs/promises';
+import { dirname, join, relative } from 'path';
 import { ApiDescription, ApiDtoProperty, ApiRoute } from '../agent';
-import { VERSIONS } from './versions.config';
 
-const V = VERSIONS.fastApi;
-const VT = VERSIONS.fastApiTest;
 
 function toSnakeCase(s: string): string {
   return s.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
@@ -174,31 +171,52 @@ ${routes}
 `;
 }
 
-function buildMainPy(description: ApiDescription): string {
-  const routerModule = toSnakeCase(description.featureName) + '_router';
-  return `from fastapi import FastAPI
-from .${routerModule} import router as ${toSnakeCase(description.featureName)}_router
+async function updateMainPy(mainPyPath: string, featureName: string, featureBase: string, rootDir: string): Promise<void> {
+  // Skip entirely if main.py does not exist
+  try { await access(mainPyPath); } catch { return; }
 
-app = FastAPI(title="${capitalize(description.featureName)} API", version="0.0.1")
-app.include_router(${toSnakeCase(description.featureName)}_router)
+  const name = toSnakeCase(featureName);
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-`;
+  // Compute import module path relative to rootDir (where main.py lives)
+  const relPath = relative(rootDir, featureBase).replace(/\\/g, '/');
+  const modulePath = relPath ? `${relPath.replace(/\//g, '.')}.${name}_router` : `${name}_router`;
+
+  const importLine = `from ${modulePath} import router as ${name}_router`;
+  const includeRouterLine = `app.include_router(${name}_router)`;
+
+  const content = await readFile(mainPyPath, 'utf-8');
+
+  // Nothing to do if already registered
+  if (content.includes(includeRouterLine)) return;
+
+  const lines = content.split('\n');
+
+  // Insert import after the last router import line (or after 'from fastapi import FastAPI')
+  let lastImportIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('from ') && lines[i].includes('_router')) lastImportIdx = i;
+  }
+  if (lastImportIdx >= 0) {
+    lines.splice(lastImportIdx + 1, 0, importLine);
+  } else {
+    const fastapiIdx = lines.findIndex(l => l.startsWith('from fastapi import'));
+    lines.splice(fastapiIdx >= 0 ? fastapiIdx + 1 : 0, 0, importLine);
+  }
+
+  // Insert include_router after the last app.include_router(...) line
+  let lastIncludeIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('app.include_router(')) lastIncludeIdx = i;
+  }
+  if (lastIncludeIdx >= 0) {
+    lines.splice(lastIncludeIdx + 1, 0, includeRouterLine);
+  }
+
+  await writeFile(mainPyPath, lines.join('\n'), 'utf-8');
+  console.log(`✓ [FastAPI] Updated main.py — added ${name}_router`);
 }
 
-function buildRequirements(description: ApiDescription): string {
-  const useUnittest = description.testFramework === 'unittest';
-  const testDeps = useUnittest
-    ? `httpx${VT.httpx}\n`
-    : `httpx${VT.httpx}\npytest${VT.pytest}\npytest-asyncio${VT.pytestAsyncio}\n`;
 
-  return `fastapi${V.fastapi}
-uvicorn[standard]${V.uvicorn}
-pydantic${V.pydantic}
-${testDeps}`;
-}
 
 function buildVendorService(description: ApiDescription): string {
   const name = toSnakeCase(description.featureName);
@@ -320,7 +338,9 @@ function toPascalCase(s: string): string {
 }
 
 export async function createFastApiFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
   const name = toSnakeCase(description.featureName);
 
   await write(join(base, `${name}_router.py`), buildRouter(description));
@@ -328,9 +348,8 @@ export async function createFastApiFiles(description: ApiDescription, rootDir: s
   await write(join(base, `${name}_schema.py`), buildSchema(description));
   await write(join(base, `${name}_vendor_service.py`), buildVendorService(description));
   await write(join(base, `test_${name}.py`), buildTests(description));
-  await write(join(base, 'main.py'), buildMainPy(description));
   await write(join(base, '__init__.py'), '');
-  await write(join(base, 'requirements.txt'), buildRequirements(description));
+  await updateMainPy(join(rootDir, 'main.py'), description.featureName, base, rootDir);
 
   console.log(`✓ [FastAPI] Generated for '${description.featureName}' → ${base}`);
 }

@@ -501,7 +501,9 @@ function buildPackageJsonWithTests(description: ApiDescription): string {
 }
 
 export async function createExpressFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
   const testConfig = buildTestConfig(description);
 
   await write(join(base, `${description.featureName}.handler.ts`), buildHandlerFile(description));

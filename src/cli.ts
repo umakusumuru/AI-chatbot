@@ -10,7 +10,7 @@
  *   api-generator generate --file=user.api.json --protocol=grpc --output=./src
  */
 
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { generateApiFromFile, generateApisFromDirectory, TargetFramework, ApiProtocol, TestFramework } from './agent';
 
 const args = process.argv.slice(2);
@@ -112,7 +112,7 @@ async function main() {
 
   const file = getArg('file');
   const definitionsDir = getArg('definitions') ?? join(process.cwd(), 'src', 'api-definitions');
-  const output = getArg('output') ?? join(process.cwd(), 'src');
+  const output = resolve(getArg('output') ?? join(process.cwd(), 'src'));
   const targetOverride = getArg('target') as TargetFramework | undefined;
   const protocolOverride = getArg('protocol') as ApiProtocol | undefined;
   const testFrameworkOverride = getArg('test-framework') as TestFramework | undefined;

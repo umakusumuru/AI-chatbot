@@ -304,7 +304,9 @@ ${tests}
 }
 
 export async function createGraphQLFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
 
   await write(join(base, `${description.featureName}.schema.graphql`), buildSchema(description));
   await write(join(base, `${description.featureName}.resolver.ts`), buildResolver(description));

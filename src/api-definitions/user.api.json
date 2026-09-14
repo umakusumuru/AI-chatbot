@@ -6,6 +6,7 @@
   "serviceClassName": "UserService",
   "target": "nestjs",
   "protocol": "rest",
+  "outputMode": "folder",
   "routes": [
     {
       "method": "get",

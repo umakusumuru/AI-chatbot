@@ -1,6 +1,6 @@
 import { access, mkdir, writeFile, readdir, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { basename, dirname, join } from 'path';
+import { basename, dirname, join, relative } from 'path';
 import { spawnSync } from 'child_process';
 import { createExpressFiles } from './targets/express.generator';
 import { createSpringBootFiles } from './targets/springboot.generator';
@@ -69,6 +69,24 @@ export interface ApiRoute {
   };
 }
 
+/** Custom output directories for path-based generation mode */
+export interface OutputPaths {
+  controller?: string;
+  service?: string;
+  module?: string;
+  dto?: string;
+  spec?: string;
+}
+
+/** Resolved absolute directories used during file generation */
+export interface GenerationDirs {
+  controllersDir: string;
+  servicesDir: string;
+  modulesDir: string;
+  dtoDir: string;
+  specDir: string;
+}
+
 export interface ApiDescription {
   featureName: string;
   baseRoute: string;
@@ -81,6 +99,13 @@ export interface ApiDescription {
   protocol?: ApiProtocol;
   /** Test framework — each language has its own default and supported options */
   testFramework?: TestFramework;
+  /**
+   * "folder" (default): shared category dirs under rootDir (controllers/, services/, …)
+   * "path": use explicit dirs from outputPaths
+   */
+  outputMode?: 'folder' | 'path';
+  /** Only used when outputMode is "path". Any omitted key falls back to the folder-mode default. */
+  outputPaths?: OutputPaths;
   routes: ApiRoute[];
 }
 
@@ -294,22 +319,23 @@ ${notFoundResponse}${requestBodyDecorator}  ${route.actionName}(${params}): Obse
 `;
 }
 
-function buildControllerSource(description: ApiDescription) {
+function buildControllerSource(description: ApiDescription, dirs: GenerationDirs) {
+  const controllerFile = join(dirs.controllersDir, `${description.baseRoute}.controller.ts`);
+  const serviceFile = join(dirs.servicesDir, `${description.baseRoute}.service.ts`);
+
   const imports = [
     `import { Controller, Body, Param, Get, Post, Put, Delete, Patch } from '@nestjs/common';`,
     `import { ApiBody, ApiBadRequestResponse, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';`,
     `import { Observable } from 'rxjs';`,
-    `import { ${description.serviceClassName} } from './${description.baseRoute}.service';`,
+    `import { ${description.serviceClassName} } from '${toRelativeImport(controllerFile, serviceFile)}';`,
   ];
 
   const dtoImports = description.routes
     .filter((route) => route.requestDto)
-    .map(
-      (route) =>
-        `import { ${route.requestDto!.name} } from './dto/${
-          route.requestDto!.name
-        }.dto';`
-    );
+    .map((route) => {
+      const dtoFile = join(dirs.dtoDir, `${route.requestDto!.name}.dto.ts`);
+      return `import { ${route.requestDto!.name} } from '${toRelativeImport(controllerFile, dtoFile)}';`;
+    });
 
   const methods = description.routes.map(createRouteMethod).join('\n');
 
@@ -335,7 +361,7 @@ ${methods}
 `;
 }
 
-function buildServiceSource(description: ApiDescription) {
+function buildServiceSource(description: ApiDescription, dirs: GenerationDirs) {
   const methods = description.routes
     .map((route) => {
       const hasPathParam = /:(\w+)/.test(route.path);
@@ -497,14 +523,13 @@ function buildServiceSource(description: ApiDescription) {
     })
     .join('\n');
 
+  const serviceFile = join(dirs.servicesDir, `${description.baseRoute}.service.ts`);
   const dtoImports = description.routes
     .filter((route) => route.requestDto)
-    .map(
-      (route) =>
-        `import { ${route.requestDto!.name} } from './dto/${
-          route.requestDto!.name
-        }.dto';`
-    );
+    .map((route) => {
+      const dtoFile = join(dirs.dtoDir, `${route.requestDto!.name}.dto.ts`);
+      return `import { ${route.requestDto!.name} } from '${toRelativeImport(serviceFile, dtoFile)}';`;
+    });
 
   const hasVendorRoutes = description.routes.some((route) => route.vendor);
   const hasPathParams = description.routes.some((route) => /:(\w+)/.test(route.path));
@@ -590,10 +615,12 @@ function buildSampleDtoBody(properties: ApiDtoProperty[]) {
   return buildObj(properties, 6);
 }
 
-function buildServiceSpecSource(description: ApiDescription) {
+function buildServiceSpecSource(description: ApiDescription, dirs: GenerationDirs) {
+  const specFile = join(dirs.specDir, `${description.baseRoute}.service.spec.ts`);
+  const serviceFile = join(dirs.servicesDir, `${description.baseRoute}.service.ts`);
   const imports = [
     `import { Test, TestingModule } from "@nestjs/testing";`,
-    `import { ${description.serviceClassName} } from "./${description.baseRoute}.service";`,
+    `import { ${description.serviceClassName} } from "${toRelativeImport(specFile, serviceFile)}";`,
   ];
 
   const routes = description.routes;
@@ -646,11 +673,14 @@ function buildServiceSpecSource(description: ApiDescription) {
   }>(${description.serviceClassName});\n  });\n\n${specTests}});\n`;
 }
 
-function buildControllerSpecSource(description: ApiDescription) {
+function buildControllerSpecSource(description: ApiDescription, dirs: GenerationDirs) {
+  const specFile = join(dirs.specDir, `${description.baseRoute}.controller.spec.ts`);
+  const controllerFile = join(dirs.controllersDir, `${description.baseRoute}.controller.ts`);
+  const serviceFile = join(dirs.servicesDir, `${description.baseRoute}.service.ts`);
   const imports = [
     `import { Test, TestingModule } from "@nestjs/testing";`,
-    `import { ${description.controllerClassName} } from "./${description.baseRoute}.controller";`,
-    `import { ${description.serviceClassName} } from "./${description.baseRoute}.service";`,
+    `import { ${description.controllerClassName} } from "${toRelativeImport(specFile, controllerFile)}";`,
+    `import { ${description.serviceClassName} } from "${toRelativeImport(specFile, serviceFile)}";`,
   ];
 
   const specTests = description.routes
@@ -684,10 +714,13 @@ function buildControllerSpecSource(description: ApiDescription) {
   }>(${description.controllerClassName});\n  });\n\n${specTests}});\n`;
 }
 
-function buildModuleSource(description: ApiDescription) {
+function buildModuleSource(description: ApiDescription, dirs: GenerationDirs) {
+  const moduleFile = join(dirs.modulesDir, `${description.baseRoute}.module.ts`);
+  const controllerFile = join(dirs.controllersDir, `${description.baseRoute}.controller.ts`);
+  const serviceFile = join(dirs.servicesDir, `${description.baseRoute}.service.ts`);
   return `import { Module } from '@nestjs/common';
-import { ${description.controllerClassName} } from './${description.baseRoute}.controller';
-import { ${description.serviceClassName} } from './${description.baseRoute}.service';
+import { ${description.controllerClassName} } from '${toRelativeImport(moduleFile, controllerFile)}';
+import { ${description.serviceClassName} } from '${toRelativeImport(moduleFile, serviceFile)}';
 
 /**
  * ${description.moduleClassName}
@@ -712,12 +745,15 @@ function normalizeImportLine(line: string) {
 
 export function buildGeneratedModuleSource(
   descriptions: ApiDescription[],
+  rootDir: string,
   extraImports: string[] = []
 ) {
-  const generatedImports = descriptions.map(
-    (desc) =>
-      `import { ${desc.moduleClassName} } from './${desc.baseRoute}/${desc.baseRoute}.module';`
-  );
+  const generatedModuleFile = join(rootDir, 'generated.module.ts');
+  const generatedImports = descriptions.map((desc) => {
+    const dirs = resolveGenerationDirs(desc, rootDir);
+    const moduleFile = join(dirs.modulesDir, `${desc.baseRoute}.module.ts`);
+    return `import { ${desc.moduleClassName} } from '${toRelativeImport(generatedModuleFile, moduleFile)}';`;
+  });
 
   const importLines = [
     `import { Module } from '@nestjs/common';`,
@@ -820,6 +856,7 @@ export async function writeGeneratedModuleFile(
 
   const moduleSource = buildGeneratedModuleSource(
     combinedDescriptions,
+    rootDir,
     extraImports
   );
   await writeFileContent(generatedModulePath, moduleSource);
@@ -827,6 +864,37 @@ export async function writeGeneratedModuleFile(
 
 async function ensureDirectory(pathSegments: string) {
   await mkdir(pathSegments, { recursive: true });
+}
+
+function toRelativeImport(fromFile: string, toFile: string): string {
+  const target = toFile.replace(/\.ts$/, '');
+  let rel = relative(dirname(fromFile), target).replace(/\\/g, '/');
+  if (!rel.startsWith('.')) rel = './' + rel;
+  return rel;
+}
+
+function resolveGenerationDirs(description: ApiDescription, rootDir: string): GenerationDirs {
+  const featureDir = join(rootDir, description.featureName);
+
+  if (description.outputMode === 'path' && description.outputPaths) {
+    const p = description.outputPaths;
+    return {
+      controllersDir: p.controller ?? featureDir,
+      servicesDir:    p.service    ?? featureDir,
+      modulesDir:     p.module     ?? featureDir,
+      dtoDir:         p.dto        ?? join(featureDir, 'dto'),
+      specDir:        p.spec       ?? featureDir,
+    };
+  }
+
+  // "folder" mode (default): all files under <featureName>/ folder
+  return {
+    controllersDir: featureDir,
+    servicesDir:    featureDir,
+    modulesDir:     featureDir,
+    dtoDir:         join(featureDir, 'dto'),
+    specDir:        featureDir,
+  };
 }
 
 async function writeFileContent(filePath: string, content: string) {
@@ -869,58 +937,104 @@ export async function createAgentApiFiles(
       break; // falls through to existing NestJS generation below
   }
 
-  const featureDir = join(rootDir, description.baseRoute);
-  const dtoDir = join(featureDir, 'dto');
+  const dirs = resolveGenerationDirs(description, rootDir);
 
-  await ensureDirectory(featureDir);
-  await ensureDirectory(dtoDir);
+  await ensureDirectory(dirs.controllersDir);
+  await ensureDirectory(dirs.servicesDir);
+  await ensureDirectory(dirs.modulesDir);
+  await ensureDirectory(dirs.dtoDir);
+  await ensureDirectory(dirs.specDir);
 
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.module.ts`),
-    buildModuleSource(description)
+    join(dirs.modulesDir, `${description.baseRoute}.module.ts`),
+    buildModuleSource(description, dirs)
   );
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.controller.ts`),
-    buildControllerSource(description)
+    join(dirs.controllersDir, `${description.baseRoute}.controller.ts`),
+    buildControllerSource(description, dirs)
   );
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.service.ts`),
-    buildServiceSource(description)
+    join(dirs.servicesDir, `${description.baseRoute}.service.ts`),
+    buildServiceSource(description, dirs)
   );
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.controller.spec.ts`),
-    buildControllerSpecSource(description)
+    join(dirs.specDir, `${description.baseRoute}.controller.spec.ts`),
+    buildControllerSpecSource(description, dirs)
   );
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.service.spec.ts`),
-    buildServiceSpecSource(description)
+    join(dirs.specDir, `${description.baseRoute}.service.spec.ts`),
+    buildServiceSpecSource(description, dirs)
   );
 
   for (const route of description.routes) {
     if (route.requestDto) {
       await writeFileContent(
-        join(dtoDir, `${route.requestDto.name}.dto.ts`),
+        join(dirs.dtoDir, `${route.requestDto.name}.dto.ts`),
         buildDtoSource(route.requestDto.name, route.requestDto.properties)
       );
     }
   }
+
+  await updateAppModule(rootDir, description, dirs);
+}
+
+async function updateAppModule(
+  rootDir: string,
+  description: ApiDescription,
+  dirs: GenerationDirs
+): Promise<void> {
+  const appModulePath = join(rootDir, 'app.module.ts');
+
+  // Skip silently if app.module.ts does not exist
+  try { await access(appModulePath); } catch { return; }
+
+  let content = await readFile(appModulePath, 'utf-8');
+
+  // Already wired — nothing to do
+  if (content.includes(description.moduleClassName)) return;
+
+  // Compute relative import path from app.module.ts to the module file
+  const moduleFile = join(dirs.modulesDir, `${description.baseRoute}.module.ts`);
+  const importPath = toRelativeImport(appModulePath, moduleFile);
+  const importLine = `import { ${description.moduleClassName} } from '${importPath}';`;
+
+  // 1. Insert import after the last import statement in the file
+  const allImports = [...content.matchAll(/^import .+;$/gm)];
+  if (allImports.length > 0) {
+    const last = allImports[allImports.length - 1];
+    const pos = last.index! + last[0].length;
+    content = content.slice(0, pos) + '\n' + importLine + content.slice(pos);
+  }
+
+  // 2. Add module class name into the imports: [...] array of @Module
+  content = content.replace(
+    /(imports:\s*\[)([\s\S]*?)(\])/,
+    (_, open, middle, close) => {
+      const trimmed = middle.trimEnd();
+      const separator = trimmed.replace(/[\s,]+$/, '').trim() ? ', ' : '';
+      return `${open}${trimmed}${separator}${description.moduleClassName}${close}`;
+    }
+  );
+
+  await writeFile(appModulePath, content, 'utf-8');
+  console.log(`✓ Wired ${description.moduleClassName} into app.module.ts`);
 }
 
 export async function createAgentApiTestFiles(
   description: ApiDescription,
   rootDir: string
 ) {
-  const featureDir = join(rootDir, description.baseRoute);
+  const dirs = resolveGenerationDirs(description, rootDir);
 
-  await ensureDirectory(featureDir);
+  await ensureDirectory(dirs.specDir);
 
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.controller.spec.ts`),
-    buildControllerSpecSource(description)
+    join(dirs.specDir, `${description.baseRoute}.controller.spec.ts`),
+    buildControllerSpecSource(description, dirs)
   );
   await writeFileContent(
-    join(featureDir, `${description.baseRoute}.service.spec.ts`),
-    buildServiceSpecSource(description)
+    join(dirs.specDir, `${description.baseRoute}.service.spec.ts`),
+    buildServiceSpecSource(description, dirs)
   );
 }
 
@@ -1028,7 +1142,7 @@ export function generateModuleImports(descriptions: ApiDescription[]): string {
   const imports = descriptions
     .map(
       (desc) =>
-        `import { ${desc.moduleClassName} } from './${desc.baseRoute}/${desc.baseRoute}.module';`
+        `import { ${desc.moduleClassName} } from './modules/${desc.baseRoute}.module';`
     )
     .join('\n');
 

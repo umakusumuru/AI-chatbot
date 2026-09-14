@@ -437,7 +437,9 @@ function buildPomXmlWithTestNG(description: ApiDescription): string {
 }
 
 export async function createSpringBootFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
   const pkg = `com.example.${toSnakeCase(description.featureName).replace(/_/g, '.')}`;
   const pkgPath = join(base, 'src', 'main', 'java', ...pkg.split('.'));
   const testPkgPath = join(base, 'src', 'test', 'java', ...pkg.split('.'));

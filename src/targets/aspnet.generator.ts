@@ -486,7 +486,9 @@ ${tests}
 }
 
 export async function createAspNetFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
   const cap = toPascalCase(description.featureName);
   const controllerClass = cap + 'Controller';
   const serviceClass = cap + 'Service';
@@ -497,9 +499,7 @@ export async function createAspNetFiles(description: ApiDescription, rootDir: st
   await write(join(base, 'Services', `I${cap}VendorService.cs`), buildVendorInterface(description));
   await write(join(base, 'Services', `${cap}VendorService.cs`), buildVendorService(description));
   await write(join(base, 'Program.cs'), buildProgramCs(description));
-  await write(join(base, `${description.featureName}-api.csproj`), buildCsproj(description.featureName));
   await write(join(base, 'Tests', `${controllerClass}Tests.cs`), buildControllerTests(description));
-  await write(join(base, 'Tests', `${description.featureName}-api.Tests.csproj`), buildTestCsproj(description));
 
   for (const route of description.routes) {
     if (route.requestDto) {

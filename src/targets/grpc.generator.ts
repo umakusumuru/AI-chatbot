@@ -279,7 +279,9 @@ ${tests}
 }
 
 export async function createGrpcFiles(description: ApiDescription, rootDir: string) {
-  const base = join(rootDir, description.baseRoute);
+  const base = description.outputMode === 'path'
+    ? rootDir
+    : join(rootDir, description.featureName);
   const name = toSnakeCase(description.featureName);
 
   await write(join(base, `${name}.proto`), buildProto(description));
